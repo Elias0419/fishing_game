@@ -23,8 +23,8 @@ class Fish:
     specific_type: str = "generic_fish"
     subtype: str = "generic_fish_subtype"
 
-    length_inch: float = 6 # Remove me
-    weight_lbs: float = 11 # Remove me
+    length_inch: float = 6  # Remove me
+    weight_lbs: float = 11  # Remove me
 
     # def __post_init__(self): # TEST
     #     if self.length_inch is None:
@@ -39,8 +39,6 @@ class Goldfish(Fish):
     eats: list[str] = field(default_factory=lambda: ["Worm", "Small Bug"])
     specific_type: str = "goldfish"
     subtype: str = "bony_fishes"
-
-
 
     minimum_fishing_experience: int = 11  # TEST
 

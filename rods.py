@@ -18,6 +18,7 @@ class TenLbMono(Line):
 class Reel:
     name: str = "Generic Reel"
     drag_lbs: int = 10
+    max_drag: int = 10
 
 
 @dataclass

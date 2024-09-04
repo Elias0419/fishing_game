@@ -12,6 +12,7 @@ class Character:
             self.age = get_level_from_experience(self.fishing_experience)
             self.strength = character_data.get("strength", 1)
             self.stamina = character_data.get("stamina", 100)
+            self.max_stamina = character_data.get("max_stamina", 100)
             self.gear = character_data.get("gear", {})
             boats = character_data.get("boats", [])
             self.garage = Garage(boats)
@@ -22,6 +23,7 @@ class Character:
             self.fishing_experience = character_data.fishing_experience
             self.age = get_level_from_experience(self.fishing_experience)
             self.strength = character_data.strength
+            self.max_stamina = character_data.max_stamina
             self.stamina = character_data.stamina
             self.gear = character_data.gear
             boats = character_data.boats

@@ -14,8 +14,8 @@ def calculate_fish_weight(length_inch):
 class Fish:
     name: str = "Generic Fish"
     stamina: int = 100
-    length_inch: float = None
-    weight_lbs: float = None
+    # length_inch: float = None
+    # weight_lbs: float = None # TEST
     minimum_fishing_experience: int = 0
     gives_exp: int = 0
     eats: list[str] = field(default_factory=lambda: ["all"])
@@ -23,10 +23,13 @@ class Fish:
     specific_type: str = "generic_fish"
     subtype: str = "generic_fish_subtype"
 
-    def __post_init__(self):
-        if self.length_inch is None:
-            self.length_inch = random.uniform(1, 10)
-        self.weight_lbs = calculate_fish_weight(self.length_inch)
+    length_inch: float = 6 # Remove me
+    weight_lbs: float = 11 # Remove me
+
+    # def __post_init__(self): # TEST
+    #     if self.length_inch is None:
+    #         self.length_inch = random.uniform(1, 10)
+    #     self.weight_lbs = calculate_fish_weight(self.length_inch)
 
 
 @dataclass
@@ -37,12 +40,14 @@ class Goldfish(Fish):
     specific_type: str = "goldfish"
     subtype: str = "bony_fishes"
 
-    minimum_fishing_experience: int = 150  # TEST
 
-    def __post_init__(self):
-        self.length_inch = random.uniform(1, 10)
-        self.gives_exp: int = random.randint(3, 10)
-        super().__post_init__()
+
+    minimum_fishing_experience: int = 11  # TEST
+
+    # def __post_init__(self): # TEST
+    #     self.length_inch = random.uniform(1, 10)
+    #     self.gives_exp: int = random.randint(3, 10)
+    #     super().__post_init__()
 
 
 @dataclass
@@ -54,6 +59,8 @@ class Bluegill(Fish):
     eats: list[str] = field(default_factory=lambda: ["Worm", "Small Bug"])
     specific_type: str = "bluegill"
     subtype: str = "bony_fishes"
+
+    minimum_fishing_experience: int = 20
 
     def __post_init__(self):
         self.gives_exp: int = random.randint(5, 15)
@@ -71,6 +78,8 @@ class Catfish(Fish):
     specific_type: str = "catfish"
     subtype: str = "bony_fishes"
 
+    minimum_fishing_experience: int = 100
+
     def __post_init__(self):
         self.gives_exp: int = random.randint(10, 20)
         self.length_inch = random.uniform(12, 24)
@@ -87,6 +96,8 @@ class Carp(Fish):
     specific_type: str = "carp"
     subtype: str = "bony_fishes"
 
+    minimum_fishing_experience: int = 250
+
     def __post_init__(self):
         self.gives_exp: int = random.randint(15, 25)
         self.length_inch = random.uniform(12, 36)
@@ -98,7 +109,7 @@ class Sunfish(Fish):
     name: str = "Sunfish"
     stamina: int = 15
     # length_inch: float = random.uniform(3, 10)
-
+    minimum_fishing_experience: int = 500
     eats: list[str] = field(default_factory=lambda: ["Worm", "Bread"])
     specific_type: str = "sunfish"
     subtype: str = "bony_fishes"

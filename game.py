@@ -104,9 +104,11 @@ class Game:
             "character_id": character_id,
             "name": choice,
             "age": 10,
-            "fishing_experience": 100,
+            "fishing_experience": 6,# Test
+            # "fishing_experience": 0,
             "strength": 1,
             "stamina": 100,
+            "max_stamina": 100,
             "gear": [{"rod": Twig(TenLbMono(), Reel()), "bait": Worm(amount=10)}],
             "boats": [],
         }

@@ -28,7 +28,8 @@ class NeighborhoodPond(Location):
     name: str = "Neighborhood Pond"
     fish_probability: dict[str, float] = field(
         default_factory=lambda: {
-            "Goldfish": 1,  # 0.5
+            "Goldfish": 1,
+            # "Goldfish": 0.5, # TEST
             # "Bluegill": 0.3,
             # "Catfish": 0.1,
             # "Carp": 0.05,

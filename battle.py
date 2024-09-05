@@ -7,7 +7,8 @@ class Battle:
     def __init__(self):
         self.drag_too_high_count = 0
         self.drag_too_low_count = 0
-        self.max_safe_drag = 0
+        self.drag_init_flag = False
+        # self.max_safe_drag = 0
 
 
     def battle_fish(self, character, fish, bait, difficulty=None):
@@ -124,15 +125,36 @@ class Battle:
             adjustment_direction,
         )
 
-        if adjustment and adjustment_direction == "down":
-            current_safe_drag = self.max_safe_drag
-            self.max_safe_drag = current_safe_drag + adjustment
-        elif adjustment and adjustment_direction == "up":
-            current_safe_drag = self.max_safe_drag
-            self.max_safe_drag = current_safe_drag - adjustment
-
-        else:
+        # Check if it's the first action of the entire game
+        if not hasattr(self, 'max_safe_drag'):
+            print("\nif not hasattr(self, 'max_safe_drag')\n")
             self.max_safe_drag = baseline_max_safe_drag
+            self.first_round = True
+
+        # Check if it's the first round of a new battle
+        if self.first_round:
+            print("\nif self.first_round:\n")
+            if adjustment:
+                print("if adjustment:\n")
+                # If there's an adjustment in the first round, apply it to the baseline
+                if adjustment_direction == "down":
+                    self.max_safe_drag = baseline_max_safe_drag + adjustment
+                elif adjustment_direction == "up":
+                    self.max_safe_drag = baseline_max_safe_drag - adjustment
+            else:
+                print("else # If no adjustment in the first round, use the baseline")
+                # If no adjustment in the first round, use the baseline
+                self.max_safe_drag = baseline_max_safe_drag
+
+            self.first_round = False
+        else:
+            # For subsequent rounds, apply adjustments normally
+            print("# For subsequent rounds, apply adjustments normally")
+            if adjustment:
+                if adjustment_direction == "down":
+                    self.max_safe_drag += adjustment
+                elif adjustment_direction == "up":
+                    self.max_safe_drag -= adjustment
 
         minimum_effective_drag = int(
             max(0.5 * fish_weight, baseline_max_safe_drag * 0.5)
@@ -144,29 +166,6 @@ class Battle:
             "\nMaximum safe drag:",
             self.max_safe_drag,
         )
-
-        if fish_weight > self.max_safe_drag:
-            print(
-                f"{reel.name} screams under the weight of the fish!\nReduce the drag before something breaks!"
-            )
-            self.drag_too_high()
-        else:
-            self.drag_too_high_count = 0
-            print(
-                "\nDrag too high reset to",
-                self.drag_too_high_count,
-                "inside calculate_drag",
-            )
-            if minimum_effective_drag > reel_current_drag:
-                self.drag_too_low()
-                print("\nLow drag\n") # TODO
-            else:
-                self.drag_too_low_count = 0
-                print(
-                "\nDrag too low reset to",
-                self.drag_too_low_count,
-                "inside calculate_drag",
-            )
 
     def drag_too_low(self): # probably affected by experience or skills
         self.drag_too_low_count +=1
@@ -321,7 +320,9 @@ class Battle:
         elif weight == "low":
             percent_loss = random.randint(10, 50)
         else:
+            print("default fish stamina loss")
             percent_loss = random.randint(10, 90)
+            print(percent_loss)
 
         # stamina_loss = max(1, round(fish.stamina * percent_loss / 100)) # TEST
         stamina_loss = round(fish.stamina * percent_loss / 100)
@@ -355,6 +356,7 @@ class Battle:
                 return False
 
     def end_battle(self, difficulty, character, fish, bait):
+        self.drag_init_flag = False
         exp = fish.gives_exp
         # character.fishing_experience += exp # TODO testing
         print("exp increase disabled for testing")

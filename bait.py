@@ -150,3 +150,111 @@ class Pilchard(Bait):
 @dataclass
 class Shrimp(Bait):
     name: str = "Shrimp"
+
+@dataclass
+class Grub(Bait):
+    name: str = "Grub"
+
+@dataclass
+class Crickets(Bait):
+    name: str = "Crickets"
+
+@dataclass
+class Grasshoppers(Bait):
+    name: str = "Grasshoppers"
+
+@dataclass
+class Maggots(Bait):
+    name: str = "Maggots"
+
+@dataclass
+class Mealworms(Bait):
+    name: str = "Mealworms"
+
+@dataclass
+class Hellgrammites(Bait):
+    name: str = "Hellgrammites"
+
+@dataclass
+class Crawfish(Bait):
+    name: str = "Crawfish"
+
+@dataclass
+class Salamanders(Bait):
+    name: str = "Salamanders"
+
+@dataclass
+class Frogs(Bait):
+    name: str = "Frogs"
+
+@dataclass
+class CornKernel(Bait):
+    name: str = "Corn Kernel"
+
+@dataclass
+class Marshmallows(Bait):
+    name: str = "Marshmallows"
+
+@dataclass
+class CheeseChunks(Bait):
+    name: str = "Cheese Chunks"
+
+@dataclass
+class HotDogPieces(Bait):
+    name: str = "Hot Dog Pieces"
+
+@dataclass
+class DoughBalls(Bait):
+    name: str = "Dough Balls"
+
+@dataclass
+class Salmon(Bait):
+    name: str = "Salmon"
+
+@dataclass
+class Trout(Bait):
+    name: str = "Trout"
+
+@dataclass
+class Bass(Bait):
+    name: str = "Bass"
+
+@dataclass
+class Bluegill(Bait):
+    name: str = "Bluegill"
+
+@dataclass
+class Sucker(Bait):
+    name: str = "Sucker"
+
+@dataclass
+class Shiners(Bait):
+    name: str = "Shiners"
+
+@dataclass
+class Scallops(Bait):
+    name: str = "Scallops"
+
+@dataclass
+class Oysters(Bait):
+    name: str = "Oysters"
+
+@dataclass
+class Mussels(Bait):
+    name: str = "Mussels"
+
+@dataclass
+class Octopus(Bait):
+    name: str = "Octopus"
+
+@dataclass
+class Sandworms(Bait):
+    name: str = "Sandworms"
+
+@dataclass
+class Lugworms(Bait):
+    name: str = "Lugworms"
+
+@dataclass
+class Ragworms(Bait):
+    name: str = "Ragworms"

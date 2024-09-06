@@ -3,6 +3,7 @@ from random import choices
 
 # from fish import *
 import importlib
+from state_manager import StateManager
 
 
 @dataclass
@@ -13,6 +14,7 @@ class Location:
     water_movement: str = "flat"
     wind: str = "still"
     fish_probability: dict[str, float] = field(default_factory=lambda: {"any": 1})
+    unlocked: bool = False
 
     def get_fish(self):
         fish_types = list(self.fish_probability.keys())
@@ -24,8 +26,50 @@ class Location:
 
 
 @dataclass
+class World:
+    _instance = None
+    locations: list[Location] = field(default_factory=list)
+
+    @classmethod
+    def get_instance(cls, character):
+        if cls._instance is None:
+            cls._instance = cls.load_or_initialize(character)
+        return cls._instance
+
+    @staticmethod
+    def load_or_initialize(character):
+
+        _, _, world_state = StateManager.load_state(f"{character.character_id}.pkl")
+        if world_state.locations != []:
+            return world_state
+        else:
+            return World(
+                locations=[
+                    Location(
+                        name="Neighborhood Pond",
+                        unlocked=True,
+                        fish_probability={"Goldfish": 1},
+                    ),
+                    Location(
+                        name="Stream in the Woods",
+                        fish_probability={"Trout": 0.4, "Salmon": 0.15},
+                    ),
+                ]
+            )
+
+    def save(self, character):
+        character_state, battle_state, _ = StateManager.load_state(
+            f"{character.character_id}.pkl"
+        )
+        StateManager.save_state(
+            f"{character.character_id}.pkl", character_state, battle_state, self
+        )
+
+
+@dataclass
 class NeighborhoodPond(Location):
     name: str = "Neighborhood Pond"
+    unlocked: bool = True
     fish_probability: dict[str, float] = field(
         default_factory=lambda: {
             "Goldfish": 1,

@@ -1,19 +1,31 @@
 import random
 import math
-from util import get_level_from_experience
+from state_manager import StateManager, WorldState, CharacterState, BattleState
+from locations import World
+
+
+def create_level_map():
+    return {x: 100 * 2 ** (x - 10) for x in range(10, 101)}
+
+
+def get_level_from_experience(experience):
+    level_map = create_level_map()
+    for level in sorted(level_map.keys(), reverse=True):
+        if experience >= level_map[level]:
+            return level
+    return 10
 
 
 class Battle:
     def __init__(self):
         self.drag_too_high_count = 0
         self.drag_too_low_count = 0
-        self.drag_init_flag = False
-        # self.max_safe_drag = 0
-
+        # self.drag_init_flag = False
+        self.max_safe_drag = None
+        self.first_round = True
 
     def battle_fish(self, character, fish, bait, difficulty=None):
-        # player_stamina = character.stamina
-        # fish_stamina = fish.stamina
+
         while True:
             if difficulty == None:
                 if self.none_battle(difficulty, character, fish, bait):
@@ -30,10 +42,6 @@ class Battle:
             elif difficulty == "impossible":
                 if self.impossible_battle(difficulty, character, fish, bait):
                     break
-
-    # def print_battle_stamina(self, character, fish):
-    #     print(f"{character.name} stamina: {character.stamina}")
-    #     print(f"Fish stamina: {fish.stamina}")
 
     def print_battle_menu(self, difficulty, character, fish, bait):
         pre_battle_fish_stamina = fish.stamina
@@ -114,7 +122,7 @@ class Battle:
         reel_current_drag = reel.drag_lbs
         baseline_max_safe_drag = int(min(line_strength, reel_max_drag) * 0.8)
 
-        print(
+        print(  # DEBUG remove me
             "\nInside calculate_drag\nMax:",
             reel_max_drag,
             "\nCurrent",
@@ -125,54 +133,57 @@ class Battle:
             adjustment_direction,
         )
 
-        # Check if it's the first action of the entire game
-        if not hasattr(self, 'max_safe_drag'):
-            print("\nif not hasattr(self, 'max_safe_drag')\n")
+        state_manager = StateManager()
+        _, battle_state, _ = state_manager.load_state(f"{character.character_id}.pkl")
+        if battle_state.max_safe_drag is None:
             self.max_safe_drag = baseline_max_safe_drag
-            self.first_round = True
-
-        # Check if it's the first round of a new battle
-        if self.first_round:
-            print("\nif self.first_round:\n")
-            if adjustment:
-                print("if adjustment:\n")
-                # If there's an adjustment in the first round, apply it to the baseline
-                if adjustment_direction == "down":
-                    self.max_safe_drag = baseline_max_safe_drag + adjustment
-                elif adjustment_direction == "up":
-                    self.max_safe_drag = baseline_max_safe_drag - adjustment
-            else:
-                print("else # If no adjustment in the first round, use the baseline")
-                # If no adjustment in the first round, use the baseline
-                self.max_safe_drag = baseline_max_safe_drag
-
-            self.first_round = False
         else:
-            # For subsequent rounds, apply adjustments normally
-            print("# For subsequent rounds, apply adjustments normally")
-            if adjustment:
-                if adjustment_direction == "down":
-                    self.max_safe_drag += adjustment
-                elif adjustment_direction == "up":
-                    self.max_safe_drag -= adjustment
+            self.max_safe_drag = battle_state.max_safe_drag
 
+        if adjustment:
+            if adjustment_direction == "down":
+                self.max_safe_drag += adjustment
+            elif adjustment_direction == "up":
+                self.max_safe_drag -= adjustment
+        world = World.get_instance()
+        state_manager.save_state(
+            f"{character.character_id}.pkl", character, self, WorldState()
+        )  # dummy world state
         minimum_effective_drag = int(
             max(0.5 * fish_weight, baseline_max_safe_drag * 0.5)
         )  # * difficulty # Character skill here probably
 
-        print(
+        print(  # DEBUG remove me
             "Minimum effective drag:",
             minimum_effective_drag,
             "\nMaximum safe drag:",
             self.max_safe_drag,
         )
+        if fish_weight > self.max_safe_drag:
+            print(
+                f"{reel.name} screams under the weight of the fish!\nReduce the drag before something breaks!"
+            )
+            self.drag_too_high()
+        else:
+            self.drag_too_high_count = 0
+            print(
+                "\nDrag too high reset to",
+                self.drag_too_high_count,
+                "inside calculate_drag",
+            )
+            if minimum_effective_drag > reel_current_drag:
+                self.drag_too_low()
+            else:
+                self.drag_too_low_count = 0
 
-    def drag_too_low(self): # probably affected by experience or skills
-        self.drag_too_low_count +=1
+    def drag_too_low(self):  # probably affected by experience or skills
+        self.drag_too_low_count += 1
         if self.drag_too_low_count == 1:
             print("The fish is taking line fast! The drag is too low!")
         elif self.drag_too_low_count == 2:
-            print("You're gonna get spooled! Tighten the drag before you run out of line!")
+            print(
+                "You're gonna get spooled! Tighten the drag before you run out of line!"
+            )
         elif self.drag_too_low_count >= 3:
             print("You got spooled!")
             # TODO some gear loss or breakage goes here
@@ -357,6 +368,8 @@ class Battle:
 
     def end_battle(self, difficulty, character, fish, bait):
         self.drag_init_flag = False
+        self.drag_too_high_count = 0
+        self.drag_too_low_count = 0
         exp = fish.gives_exp
         # character.fishing_experience += exp # TODO testing
         print("exp increase disabled for testing")
@@ -364,6 +377,10 @@ class Battle:
         new_age = get_level_from_experience(character.fishing_experience)
         if new_age != old_age:
             print("age increased")
+        state_manager = StateManager()
+        state_manager.save_state(
+            f"{character.character_id}.pkl", character, self, WorldState()
+        )  # dummy world state
         self.print_battle_summary(difficulty, character, fish, bait, exp)
 
     def print_battle_summary(self, difficulty, character, fish, bait, exp):

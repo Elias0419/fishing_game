@@ -14,119 +14,90 @@ import os
 class Game:
     def __init__(self):
         self.current_character = None
-        self.level_map = create_level_map()
-
-        self.locations = [NeighborhoodPond(), StreamInTheWoods()]
-
-    def available_locations(self, player_level: int) -> list[Location]:
-        return [loc for loc in self.locations if player_level >= loc.minimum_level]
-
-    def choose_location(self, player_level: int) -> Location:
-
-        available = self.available_locations(player_level)
-        while True:
-            if available:
-                print("\n")
-                for i, location in enumerate(available, 1):
-                    print(f"{i}. {location.name}")
-                try:
-                    choice = int(input("\nChoose a location by number:\n "))
-                    return available[choice - 1]
-                except (ValueError, IndexError):
-                    print("\nInvalid Choice\nTry Again:")
 
     def play_game(self, character: Character):
-        self.current_character = character
-        print(f"\nWelcome {character.name}!")
-        while True:
-            print("\n1. Show Stats")
-            print("2. Show Equipment")
-            print("3. Go Fishing!")
-            print("4. TEST")
-            choice = input()
-            if choice == "1":
-                print(
-                    f"\nName {character.name}\nAge {character.age}\nExperience {character.fishing_experience}\nStrength {character.strength}\nStamina {character.stamina}"
-                )
-            elif choice == "2":
-                print(
-                    f"\nRod:\n{character.gear[0]['rod'].name}\nHit Points: {character.gear[0]['rod'].hit_points}\nBreaking Strength (lbs): {character.gear[0]['rod'].breaking_strength_lbs}\n\nLine:\n{character.gear[0]['rod'].line.name}\n\nReel:\n{character.gear[0]['rod'].reel.name}\nMax Drag: {character.gear[0]['rod'].reel.drag_lbs}"
-                )
-            elif choice == "3":
-                location = self.choose_location(character.fishing_experience)
-                fish = location.get_fish()
-                bait = character.gear[0]["bait"]
-                cast = Cast()
-                cast.cast_line(character, fish, bait)
-            elif choice == "4":
-                location = NeighborhoodPond()
-                print(location.get_fish())
+        try:
+            self.current_character = character
+            print(f"\nWelcome {character.name}!")
+            while True:
+                print("\n1. Show Stats")
+                print("2. Show Equipment")
+                print("3. Go Fishing!")
+                print("4. TEST")
+                choice = input()
+                if choice == "1":
+                    display_stats(character)
+                elif choice == "2":
+                    display_equipment(character)
+                elif choice == "3":
+                    go_fishing(character)
+                elif choice == "4":
+                    test(character)
 
-# try:
-#     self.main_menu()
-# except KeyboardInterrupt:
-#     self.exit_game()
+        except KeyboardInterrupt:
+            print("Exiting now. Bye!")
+            exit()
 
-# def exit_game(self):
-#     if self.current_character:
-#         save_data(self.current_character)
-#     print("Exiting game. Bye!")
+
 state_manager = StateManager()
+
 
 def start_new_game():
     while True:
         choice = input("Enter a name for your new character:\n")
         break
-    character_id = generate_character_id()
-    character_data = {
-        "character_id": character_id,
-        "name": choice,
-        "age": 10,
-        "fishing_experience": 6,  # Test
-        # "fishing_experience": 0,
-        "strength": 1,
-        "stamina": 100,
-        "max_stamina": 100,
-        "gear": [{"rod": Twig(TenLbMono(), Reel()), "bait": Worm(amount=10)}],
-        "boats": [],
-    }
-    new_character = Character(
-        character_data, character_id=character_data.get("character_id")
-    )
-    # save_data(new_character)
-    # self.current_character = new_character
+    character_data = generate_default_character_data(choice=choice)
+    character_id = character_data.get("character_id")
+    new_character = Character(**character_data)
+
+    battle = BattleState()
+    world = World()
+
+    state_manager.save_state(f"{character_id}.pkl", new_character, battle, world)
+
     print("Starting a new game...")
+    game = Game()
+    game.play_game(new_character)
     # self.play_game(new_character)
 
+
 def load_game():
-        saved_files = [
-            f for f in os.listdir("saved_data") if f.endswith(".pkl")
-        ]
-        if saved_files:
-            print("\nSaved games:")
-            while True:
-                for i, file in enumerate(saved_files, start=1):
-                    print(f"{i}. {file}")
-                try:
-                    save_index = int(input("\nEnter the index of the save to load: ")) - 1
-                    if 0 <= save_index < len(saved_files):
-                        save_file = saved_files[save_index]
-                        loaded_states = state_manager.load_state(f"saved_data/{save_file}")
+    saved_files = [f for f in os.listdir("saved_data") if f.endswith(".pkl")]
+    character_names = []
 
-                        # Assuming the order of states is consistent
-                        battle_state, world_state, character_state = loaded_states
+    if saved_files:
+        print("\nSaved games:")
+        for file in saved_files:
+            with open(f"saved_data/{file}", "rb") as f:
+                character_state, _, _ = pickle.load(f)
+                character_names.append(character_state.name)
 
-                        # self.current_character = Character(character_state)
-                        # Update other game states as needed
+        while True:
+            for i, name in enumerate(character_names, start=1):
+                print(f"{i}. {name}")
+            try:
+                save_index = int(input("\nEnter the index of the save to load: ")) - 1
+                if 0 <= save_index < len(saved_files):
+                    save_file = saved_files[save_index]
+                    character_state, battle_state, world_state = (
+                        state_manager.load_state(save_file)
+                    )
 
-                        print(f"\nLoaded game: {save_file}")
-                        # self.play_game()
-                        break
-                except (ValueError, IndexError):
-                    print("\nInvalid Choice\nTry Again:\n")
-        else:
-            print("No saved games available.")
-            # self.start_new_game()
+                    character_data = generate_default_character_data()
+                    dummy_character = Character(**character_data)
+
+                    state_manager.apply_state(character_state, dummy_character)
+
+                    print(f"\nLoaded game: {character_names[save_index]}")
+                    game = Game()
+                    game.play_game(dummy_character)
+                    # self.play_game()
+                    break
+            except (ValueError, IndexError):
+                print("\nInvalid choice. Try again:\n")
+    else:
+        print("No saved games available.")
+
 
 def main_menu():
     while True:
@@ -137,19 +108,13 @@ def main_menu():
             load_game()
             break
         elif choice == "N":
-            # self.start_new_game()
+            start_new_game()
             break
         elif choice == "Q":
             # self.exit_game()
             break
         else:
             print("Invalid choice, please try again.")
-# dummy state for testing
-battle = BattleState()
-world = WorldState()
-character = CharacterState()
-state_manager.save_state(f"saved_data/test.pkl", battle, world, character)
+
+
 main_menu()
-# game = Game()
-#
-# state_manager.load_state()

@@ -2,9 +2,70 @@ import pickle
 import os
 import random
 
+from rods import Twig, TenLbMono, Reel
+from bait import Worm
+from locations import Location, World, StreamInTheWoods
+from state_manager import WorldState, LocationState, StateManager
+from battle import Cast
 
-def create_level_map():
-    return {x: 100 * 2 ** (x - 10) for x in range(10, 101)}
+
+def test(character):  # unlocking locations
+    world = World.get_instance(character)
+    battle = ""
+    for location in world.locations:
+        if location.name == "Stream in the Woods":
+            location.unlocked = True
+            break
+    StateManager.save_state(f"{character.character_id}.pkl", character, battle, world)
+
+
+def available_locations(character):
+    player_level = character.age
+    world = World.get_instance(character)
+    _, _, world_state = StateManager.load_state(f"{character.character_id}.pkl")
+    if world_state.locations != []:
+        StateManager.apply_state(world_state, world)
+    return [
+        loc
+        for loc in world.locations
+        if player_level >= loc.minimum_level and loc.unlocked
+    ]
+
+
+def choose_location(character):
+
+    available = available_locations(character)
+    while True:
+        if available:
+            print("\n")
+            for i, location in enumerate(available, 1):
+                print(f"{i}. {location.name}")
+            try:
+                choice = int(input("\nChoose a location by number:\n "))
+                return available[choice - 1]
+            except (ValueError, IndexError):
+                print("\nInvalid Choice\nTry Again:")
+
+
+def display_stats(character):
+    print(
+        f"\nName {character.name}\nAge {character.age}\nExperience {character.fishing_experience}\nStrength {character.strength}\nStamina {character.stamina}"
+    )
+
+
+def display_equipment(character):
+    print(
+        f"\nRod:\n{character.gear[0]['rod'].name}\nHit Points: {character.gear[0]['rod'].hit_points}\nBreaking Strength (lbs): {character.gear[0]['rod'].breaking_strength_lbs}\n\nLine:\n{character.gear[0]['rod'].line.name}\n\nReel:\n{character.gear[0]['rod'].reel.name}\nMax Drag: {character.gear[0]['rod'].reel.drag_lbs}"
+    )
+
+
+def go_fishing(character):
+
+    location = choose_location(character)
+    fish = location.get_fish()
+    bait = character.gear[0]["bait"]
+    cast = Cast()
+    cast.cast_line(character, fish, bait)
 
 
 def load_save_data(character_id):
@@ -31,9 +92,18 @@ def generate_character_id():
     return id
 
 
-def get_level_from_experience(experience):
-    level_map = create_level_map()
-    for level in sorted(level_map.keys(), reverse=True):
-        if experience >= level_map[level]:
-            return level
-    return 10
+def generate_default_character_data(choice="dummy"):
+    character_id = generate_character_id()
+    character_data = {
+        "character_id": character_id,
+        "name": choice,
+        # "age": 10,
+        "fishing_experience": 6,  # Test
+        # "fishing_experience": 0,
+        "strength": 1,
+        "stamina": 100,
+        "max_stamina": 100,
+        "gear": [{"rod": Twig(TenLbMono(), Reel()), "bait": Worm(amount=10)}],
+        "boats": [],
+    }
+    return character_data

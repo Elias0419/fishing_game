@@ -147,8 +147,8 @@ class Battle:
                 self.max_safe_drag -= adjustment
         world = World.get_instance()
         state_manager.save_state(
-            f"{character.character_id}.pkl", character, self, WorldState()
-        )  # dummy world state
+            f"{character.character_id}.pkl", character, self, world
+        )
         minimum_effective_drag = int(
             max(0.5 * fish_weight, baseline_max_safe_drag * 0.5)
         )  # * difficulty # Character skill here probably

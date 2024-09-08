@@ -26,10 +26,11 @@ class Fish:
     length_inch: float = 6  # Remove me
     weight_lbs: float = 11  # Remove me
 
-    # def __post_init__(self): # TEST
-    #     if self.length_inch is None:
-    #         self.length_inch = random.uniform(1, 10)
-    #     self.weight_lbs = calculate_fish_weight(self.length_inch)
+    def __post_init__(self): # TEST
+        pass
+        # if self.length_inch is None:
+        #     self.length_inch = random.uniform(1, 10)
+        # self.weight_lbs = calculate_fish_weight(self.length_inch)
 
 
 @dataclass

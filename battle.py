@@ -2,6 +2,46 @@ import random
 import math
 from state_manager import StateManager, WorldState, CharacterState, BattleState
 from locations import World
+import pygame
+import pygame_menu
+from collections import deque
+from functools import wraps
+
+class CombatLog:
+    def __init__(self, x, y, width, height, font, surface):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.font = font
+        self.surface = surface
+        self.messages = deque(maxlen=50)
+
+    def add_message(self, message):
+        self.messages.appendleft(message)
+
+    def draw(self):
+        self.surface.fill((0, 0, 0), self.rect)
+        start_y = self.rect.bottom - 20
+        for message in self.messages:
+            text_surf = self.font.render(message, True, (255, 255, 255))
+            self.surface.blit(text_surf, (self.rect.x + 5, start_y))
+            start_y -= 20  # move up to draw the next message
+
+class LogDecorator:
+    def __init__(self, log_attribute):
+        self.log_attribute = log_attribute
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        return self.__class__(getattr(instance, self.log_attribute))
+
+    def __call__(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            log_instance = args[0].combat_log  # Assuming 'self' is always args[0]
+            log_instance.add_message(f"{func.__name__}: {result}")
+            return result
+        return wrapper
 
 
 def create_level_map():
@@ -17,21 +57,22 @@ def get_level_from_experience(experience):
 
 
 class Battle:
-    def __init__(self):
+    def __init__(self, combat_log):
         self.drag_too_high_count = 0
         self.drag_too_low_count = 0
         # self.drag_init_flag = False
         self.max_safe_drag = None
         self.first_round = True
+        self.combat_log = combat_log
 
-    def battle_fish(self, character, fish, bait, difficulty=None):
+    def battle_fish(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height, difficulty):
 
         while True:
             if difficulty == None:
                 if self.none_battle(difficulty, character, fish, bait):
                     break
             elif difficulty == "easy":
-                if self.easy_battle(difficulty, character, fish, bait):
+                if self.easy_battle(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, difficulty):
                     break
             elif difficulty == "medium":
                 if self.medium_battle(difficulty, character, fish, bait):
@@ -43,35 +84,56 @@ class Battle:
                 if self.impossible_battle(difficulty, character, fish, bait):
                     break
 
-    def print_battle_menu(self, difficulty, character, fish, bait):
+    def print_battle_menu(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height, difficulty):
         pre_battle_fish_stamina = fish.stamina
+        menu = pygame_menu.Menu("Battle", screen_width, screen_height, theme=menu_theme)
+        # menu.add.button('Reel', reel_fish)
+        menu.add.button('Let Fish Take Line', self.let_the_fish_take_line, difficulty, character, fish, bait, pre_battle_fish_stamina)
+        menu.add.button('Adjust Drag', self.adjust_drag)
+        # menu.add.button('Other Options', other_options)
+        # menu.add.button('Cut Your Line', cut_line)
+        menu.add.button('Quit', pygame_menu.events.EXIT)
+
         while True:
-            print(f"\n{character.name} stamina: {character.stamina}")
-            print(f"Fish stamina: {fish.stamina}\n")
-            print("\nBattle Menu")
-            print("'Enter' To Reel")
-            print("'R' To Let The Fish Take Line")
-            print("'A' To Adjust Drag")
-            print("'O' For Other Options")
-            print("'Q' To Cut Your Line")
-            choice = input()
-            if choice.lower() == "":
-                if self.reel(difficulty, character, fish, bait):
-                    return True
-            elif choice.lower() == "r":
-                self.let_the_fish_take_line(
-                    difficulty, character, fish, bait, pre_battle_fish_stamina
-                )
-            elif choice.lower() == "a":
-                adjustment, adjustment_direction = self.adjust_drag(character)
-                self.calculate_drag(
-                    difficulty,
-                    character,
-                    fish,
-                    bait,
-                    adjustment=adjustment,
-                    adjustment_direction=adjustment_direction,
-                )
+            # screen.fill((0, 0, 0))
+            events = pygame.event.get()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    exit()
+
+            menu.update(events)
+            menu.draw(surface)
+            self.combat_log.draw()
+            pygame.display.flip()
+        # print(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log, difficulty)
+        # pre_battle_fish_stamina = fish.stamina
+        # while True:
+        #     print(f"\n{character.name} stamina: {character.stamina}")
+        #     print(f"Fish stamina: {fish.stamina}\n")
+        #     print("\nBattle Menu")
+        #     print("'Enter' To Reel")
+        #     print("'R' To Let The Fish Take Line")
+        #     print("'A' To Adjust Drag")
+        #     print("'O' For Other Options")
+        #     print("'Q' To Cut Your Line")
+        #     choice = input()
+        #     if choice.lower() == "":
+        #         if self.reel(difficulty, character, fish, bait):
+        #             return True
+        #     elif choice.lower() == "r":
+        #         self.let_the_fish_take_line(
+        #             difficulty, character, fish, bait, pre_battle_fish_stamina
+        #         )
+        #     elif choice.lower() == "a":
+        #         adjustment, adjustment_direction = self.adjust_drag(character)
+        #         self.calculate_drag(
+        #             difficulty,
+        #             character,
+        #             fish,
+        #             bait,
+        #             adjustment=adjustment,
+        #             adjustment_direction=adjustment_direction,
+        #         )
 
     def check_integer(self, input):
         try:
@@ -212,9 +274,11 @@ class Battle:
             )
             pass  # 50% chance to break something
 
+    @LogDecorator('combat_log')
     def let_the_fish_take_line(
         self, difficulty, character, fish, bait, pre_battle_fish_stamina
     ):
+        print("combat log test")
         # print("take line")  # TODO maybe certain fish take line differently or stamina loss affects them differently
         if fish.stamina <= pre_battle_fish_stamina * 0.2:
             print("\nThe fish seems too weak to take any line\n")
@@ -251,13 +315,13 @@ class Battle:
                 character.stamina += character_stamina_gain
                 print(f"You gained {character_stamina_gain} stamina.")
 
-    def easy_battle(self, difficulty, character, fish, bait):
+    def easy_battle(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height, difficulty):
         # self.print_battle_stamina(character, fish)
         print("\ndrag_too_high easy_battle before", self.drag_too_high_count)
         self.drag_too_high_count = 0
         print("drag_too_high easy_battle after", self.drag_too_high_count)
 
-        if self.print_battle_menu(difficulty, character, fish, bait):
+        if self.print_battle_menu(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, difficulty):
             return True
 
     def medium_battle(self, difficulty, character, fish, bait):
@@ -396,18 +460,21 @@ class Cast:
     def __init__(self):
         pass
 
-    def cast_line(self, character, fish, bait, location=None):
+    def cast_line(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height):
+        font = pygame.font.Font(None, 24)
+        combat_log = CombatLog(600, 400, 200, 200, font, surface)
         self.bite(
-            character, fish, bait
+            character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log
         )  # TODO lots of casting logic, this is for testing
 
-    def bite(self, character, fish, bait):
+    def bite(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log):
         if character.fishing_experience < fish.minimum_fishing_experience:
-            self.level_too_low(character, fish, bait)
+            self.level_too_low(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log)
         else:
             if fish.eats == ["all"]:
-                battle = Battle()
-                battle.battle_fish(character, fish, bait)
+
+                battle = Battle(combat_log)
+                battle.battle_fish(character, fish, bait, surface, menu_theme, location, screen_width, screen_height)
             elif bait.name in fish.eats:
                 battle = Battle()
                 battle.battle_fish(character, fish, bait)
@@ -425,34 +492,34 @@ class Cast:
         ]
         print(random.choice(messages))
 
-    def level_too_low(self, character, fish, bait):
+    def level_too_low(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log):
         print(
             "\nYou hooked a big one!"
         )  # creating difficulties here that get passed through the battle functions
         if character.fishing_experience * 2 >= fish.minimum_fishing_experience:
             print("\nIt feels like you have a fair chance to beat this one.")
-            self.continue_or_quit("easy", character, fish, bait)
+            self.continue_or_quit(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log, difficulty="easy")
         elif character.fishing_experience * 3 >= fish.minimum_fishing_experience:
             print("\nIt feels pretty hefty!")
-            self.continue_or_quit("medium", character, fish, bait)
+            self.continue_or_quit(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log, difficulty="medium")
         elif character.fishing_experience * 4 >= fish.minimum_fishing_experience:
             print("\nYou can tell this is gonna be a tough fight.")
-            self.continue_or_quit("hard", character, fish, bait)
+            self.continue_or_quit(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log, difficulty="hard")
 
         else:
             print(
                 "\nThere's no way you're gonna reel this beast in! Quit while you can!"
             )
-            self.continue_or_quit("impossible", character, fish, bait)
+            self.continue_or_quit(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log, difficulty="impossible")
 
-    def continue_or_quit(self, difficulty, character, fish, bait):
+    def continue_or_quit(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log, difficulty):
 
         choice = input(
             "\nPress Enter to fight the fish, or type 'Q' and press Enter to cut the line and give up.\n"
         )
         if choice == "":
-            battle = Battle()
-            battle.battle_fish(character, fish, bait, difficulty)
+            battle = Battle(combat_log)
+            battle.battle_fish(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, difficulty)
         elif choice == "Q".lower():
             pass  # TODO cutting line penalty?
 

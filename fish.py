@@ -26,7 +26,7 @@ class Fish:
     length_inch: float = 6  # Remove me
     weight_lbs: float = 11  # Remove me
 
-    def __post_init__(self): # TEST
+    def __post_init__(self):  # TEST
         pass
         # if self.length_inch is None:
         #     self.length_inch = random.uniform(1, 10)
@@ -47,6 +47,7 @@ class Goldfish(Fish):
     #     self.length_inch = random.uniform(1, 10)
     #     self.gives_exp: int = random.randint(3, 10)
     #     super().__post_init__()
+
 
 #######################################################################################################
 @dataclass
@@ -192,7 +193,9 @@ class GreatWhite(Fish):
     specific_type: str = "great_white"
     subtype: str = "sharks"
 
+
 #
+
 
 @dataclass
 class Perch(Fish):
@@ -206,6 +209,7 @@ class Perch(Fish):
         self.gives_exp = random.randint(8, 15)
         super().__post_init__()
 
+
 @dataclass
 class Walleye(Fish):
     name: str = "Walleye"
@@ -217,6 +221,7 @@ class Walleye(Fish):
         self.length_inch = random.uniform(15, 30)
         self.gives_exp = random.randint(18, 28)
         super().__post_init__()
+
 
 @dataclass
 class Muskie(Fish):
@@ -243,7 +248,9 @@ class Marlin(Fish):
         self.gives_exp = random.randint(35, 45)
         super().__post_init__()
 
+
 ####
+
 
 @dataclass
 class Barracuda(Fish):
@@ -257,6 +264,7 @@ class Barracuda(Fish):
         self.gives_exp = random.randint(20, 30)
         super().__post_init__()
 
+
 @dataclass
 class Eel(Fish):
     name: str = "Eel"
@@ -269,6 +277,7 @@ class Eel(Fish):
         self.gives_exp = random.randint(15, 25)
         super().__post_init__()
 
+
 @dataclass
 class Clownfish(Fish):
     name: str = "Clownfish"
@@ -280,6 +289,7 @@ class Clownfish(Fish):
         self.length_inch = random.uniform(3, 6)
         self.gives_exp = random.randint(5, 10)
         super().__post_init__()
+
 
 @dataclass
 class GoliathGrouper(Fish):
@@ -294,8 +304,8 @@ class GoliathGrouper(Fish):
         super().__post_init__()
 
 
-
 #####
+
 
 @dataclass
 class Tuna(Fish):
@@ -304,12 +314,14 @@ class Tuna(Fish):
     def __post_init__(self):
         pass
 
+
 @dataclass
 class Cod(Fish):
     name: str = "Cod"
 
     def __post_init__(self):
         pass
+
 
 @dataclass
 class Halibut(Fish):
@@ -318,12 +330,14 @@ class Halibut(Fish):
     def __post_init__(self):
         pass
 
+
 @dataclass
 class Mackerel(Fish):
     name: str = "Mackerel"
 
     def __post_init__(self):
         pass
+
 
 @dataclass
 class Perch(Fish):
@@ -333,13 +347,13 @@ class Perch(Fish):
         pass
 
 
-
 @dataclass
 class Swordfish(Fish):
     name: str = "Swordfish"
 
     def __post_init__(self):
         pass
+
 
 @dataclass
 class Tilapia(Fish):
@@ -348,12 +362,14 @@ class Tilapia(Fish):
     def __post_init__(self):
         pass
 
+
 @dataclass
 class Sardine(Fish):
     name: str = "Sardine"
 
     def __post_init__(self):
         pass
+
 
 @dataclass
 class Anchovy(Fish):
@@ -362,12 +378,14 @@ class Anchovy(Fish):
     def __post_init__(self):
         pass
 
+
 @dataclass
 class Pike(Fish):
     name: str = "Pike"
 
     def __post_init__(self):
         pass
+
 
 @dataclass
 class Flounder(Fish):
@@ -376,12 +394,14 @@ class Flounder(Fish):
     def __post_init__(self):
         pass
 
+
 @dataclass
 class Grouper(Fish):
     name: str = "Grouper"
 
     def __post_init__(self):
         pass
+
 
 @dataclass
 class Haddock(Fish):
@@ -390,6 +410,7 @@ class Haddock(Fish):
     def __post_init__(self):
         pass
 
+
 @dataclass
 class Mahi(Fish):
     name: str = "Mahi-Mahi"
@@ -397,11 +418,10 @@ class Mahi(Fish):
     def __post_init__(self):
         pass
 
+
 @dataclass
 class Snapper(Fish):
     name: str = "Snapper"
 
     def __post_init__(self):
         pass
-
-

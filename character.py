@@ -19,9 +19,7 @@ class Character:
 
     def __post_init__(self):
         self.age = get_level_from_experience(self.fishing_experience)
-        self.garage = Garage(
-            self.boats
-        )
+        self.garage = Garage(self.boats)
         self.boats = [boat for boat in self.garage.boats]
 
 

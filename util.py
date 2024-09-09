@@ -98,7 +98,7 @@ def go_fishing(character, surface, menu_theme, location, screen_width, screen_he
     fish = location.get_fish()
     bait = character.gear[0]["bait"]
     cast = Cast()
-    cast.cast_line(character, fish, bait)
+    cast.cast_line(character, fish, bait, surface, menu_theme, location, screen_width, screen_height)
 
 
 def load_save_data(character_id):

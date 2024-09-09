@@ -21,6 +21,14 @@ class LocationState:
 class WorldState:
     locations: list[LocationState] = field(default_factory=list)
 
+@dataclass
+class GameState:
+    character: str
+    surface: str
+    menu_theme: str
+    screen_width: int
+    screen_height: int
+
 
 @dataclass
 class CharacterState:
@@ -38,15 +46,15 @@ class CharacterState:
 class StateManager:
     @staticmethod
     def save_state(path, *states):
-        # print(*states)
         with open(f"saved_data/{path}", "wb") as f:
             pickle.dump(states, f)
 
     @staticmethod
     def load_state(path):
         with open(f"saved_data/{path}", "rb") as f:
-            character_state, battle_state, world_state = pickle.load(f)
-            return character_state, battle_state, world_state
+            return pickle.load(f)
+            # character_state, battle_state, world_state = pickle.load(f)
+            # return character_state, battle_state, world_state
 
     @staticmethod
     def apply_state(source, target):

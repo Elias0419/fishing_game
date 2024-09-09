@@ -1,21 +1,19 @@
-from character import Character
-from boat import Boat
-from garage import Garage
-from battle import Battle, Cast
-from locations import *
-from bait import *
-from rods import *
-from util import *
-from fish import *
-from state_manager import StateManager, WorldState, CharacterState, BattleState
 import os
+import pickle
+
 import pygame_menu
 import pygame
-import sys
-import pygame_gui
 
-from pygame_gui.elements import UIButton, UITextEntryLine
-from pygame_gui import UIManager
+from character import Character
+from locations import World
+from util import (
+    display_equipment,
+    display_stats,
+    choose_location,
+    generate_default_character_data,
+)
+from state_manager import StateManager, BattleState
+state_manager = StateManager()
 
 
 pygame.init()
@@ -23,8 +21,8 @@ clock = pygame.time.Clock()
 info_object = pygame.display.Info()
 screen_width, screen_height = info_object.current_w, info_object.current_h
 
-surface = pygame.display.set_mode(
-    (screen_width, screen_height), pygame.DOUBLEBUF | pygame.FULLSCREEN
+surface = pygame.display.set_mode(  # , pygame.DOUBLEBUF | pygame.FULLSCREEN
+    (screen_width, screen_height)
 )
 pygame.display.set_caption("Fishing RPG")
 menu_theme = pygame_menu.themes.THEME_DARK.copy()
@@ -32,7 +30,6 @@ menu_theme.title_offset = (5, -2)
 menu_theme.widget_font_size = 25
 menu_theme.menu_width = int(screen_width * 0.9)
 menu_theme.menu_height = int(screen_height * 0.9)
-state_manager = StateManager()
 
 
 def game_interface(character):
@@ -51,15 +48,14 @@ def game_interface(character):
         screen_width,
         screen_height,
     )
-    menu.add.button("Test", test, character)
+    # menu.add.button("Test", test, character)
     menu.add.button("Quit", pygame_menu.events.EXIT)
 
     while True:
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
+                sys.exit()
 
         if menu.is_enabled():
             menu.update(events)
@@ -78,7 +74,6 @@ def main_menu():
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
-                pygame.quit()
                 sys.exit()
 
         if menu.is_enabled():
@@ -111,7 +106,6 @@ def start_new_game():
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
-                pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
@@ -168,7 +162,7 @@ def load_game():
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
-                exit()
+                sys.exit()
             if event.type == pygame_menu.events.BACK:
                 main_menu()
 
@@ -190,7 +184,7 @@ def main_menu():
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
-                exit()
+                sys.exit()
 
         if menu.is_enabled():
             menu.update(events)

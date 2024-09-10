@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field, fields
+from collections import namedtuple
 import pickle
 
 
@@ -42,6 +43,7 @@ class CharacterState:
     gear: list = field(default_factory=list)
     boats: list = field(default_factory=list)
 
+GameState = namedtuple('GameState', ['character_state', 'battle_state', 'world_state'])
 
 class StateManager:
     @staticmethod
@@ -52,7 +54,9 @@ class StateManager:
     @staticmethod
     def load_state(path):
         with open(f"saved_data/{path}", "rb") as f:
-            return pickle.load(f)
+            states = pickle.load(f)
+            return GameState(*states)
+            # return pickle.load(f)
             # character_state, battle_state, world_state = pickle.load(f)
             # return character_state, battle_state, world_state
 

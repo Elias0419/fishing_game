@@ -6,24 +6,45 @@ import pygame
 import pygame_menu
 from collections import deque
 from functools import wraps
-
+from contextlib import redirect_stdout
+import io
+from textwrap import wrap
 class CombatLog:
     def __init__(self, x, y, width, height, font, surface):
         self.rect = pygame.Rect(x, y, width, height)
         self.font = font
         self.surface = surface
-        self.messages = deque(maxlen=50)
+        self.messages = deque(maxlen=200)
+        self.offset = 0
 
     def add_message(self, message):
-        self.messages.appendleft(message)
+        lines = message.split('\n')
+        for line in lines:  # Reverse to maintain the correct order when displaying
+            self.messages.appendleft(line)
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 4:  # Scroll up
+                self.offset -= 1
+            elif event.button == 5:  # Scroll down
+                self.offset += 1
+
+            # Clamp the offset to prevent scrolling beyond the content
+            self.offset = max(0, min(self.offset, len(self.messages) - (self.rect.height // 20)))
 
     def draw(self):
         self.surface.fill((0, 0, 0), self.rect)
         start_y = self.rect.bottom - 20
-        for message in self.messages:
-            text_surf = self.font.render(message, True, (255, 255, 255))
-            self.surface.blit(text_surf, (self.rect.x + 5, start_y))
-            start_y -= 20  # move up to draw the next message
+        for i in range(self.offset, len(self.messages)):
+            try:
+                message = self.messages[i]
+                text_surf = self.font.render(message, True, (255, 255, 255))
+                self.surface.blit(text_surf, (self.rect.x + 5, start_y))
+                start_y -= 20
+                if start_y < self.rect.top:
+                    break
+            except IndexError:
+                pass
 
 class LogDecorator:
     def __init__(self, log_attribute):
@@ -37,9 +58,13 @@ class LogDecorator:
     def __call__(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-            log_instance = args[0].combat_log  # Assuming 'self' is always args[0]
-            log_instance.add_message(f"{func.__name__}: {result}")
+            str_buffer = io.StringIO()
+            with redirect_stdout(str_buffer):
+                result = func(*args, **kwargs)
+            output = str_buffer.getvalue()
+            log_instance = getattr(args[0], self.log_attribute)
+            if output:
+                log_instance.add_message(output.strip())
             return result
         return wrapper
 
@@ -86,6 +111,7 @@ class Battle:
 
     def print_battle_menu(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height, difficulty):
         pre_battle_fish_stamina = fish.stamina
+        menu_theme.widget_alignment = pygame_menu.locals.ALIGN_LEFT
         menu = pygame_menu.Menu("Battle", screen_width, screen_height, theme=menu_theme)
         # menu.add.button('Reel', reel_fish)
         menu.add.button('Let Fish Take Line', self.let_the_fish_take_line, difficulty, character, fish, bait, pre_battle_fish_stamina)
@@ -100,6 +126,17 @@ class Battle:
             for event in events:
                 if event.type == pygame.QUIT:
                     exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 4:  # Scroll up
+                        try:
+                            self.combat_log.offset += 1
+                        except IndexError:
+                            pass
+                    elif event.button == 5:  # Scroll down
+                        try:
+                            self.combat_log.offset -= 1
+                        except IndexError:
+                            pass
 
             menu.update(events)
             menu.draw(surface)
@@ -278,7 +315,7 @@ class Battle:
     def let_the_fish_take_line(
         self, difficulty, character, fish, bait, pre_battle_fish_stamina
     ):
-        print("combat log test")
+        print("\ncombat log test")
         # print("take line")  # TODO maybe certain fish take line differently or stamina loss affects them differently
         if fish.stamina <= pre_battle_fish_stamina * 0.2:
             print("\nThe fish seems too weak to take any line\n")
@@ -288,11 +325,10 @@ class Battle:
             # needs more complex logic for calculating loss and gain
             percent_loss = random.randint(10, 50)
             fish_stamina_loss = round(fish.stamina * percent_loss / 100)
-            print(
-                f"\nThe fish takes line. Your {character.gear[0]['rod'].reel.name} squeals under the pressure."
-            )
+            print("\nThe fish takes line.")
+            print(f"\nYour {character.gear[0]['rod'].reel.name} squeals under the pressure.")
             fish.stamina -= fish_stamina_loss
-            print(f"The fish used {fish_stamina_loss} stamina.")
+            print(f"\nThe fish used {fish_stamina_loss} stamina.")
             self.take_line_stamina_increase(character)
 
     def take_line_stamina_increase(self, character, fish_low_stamina=False):
@@ -462,7 +498,12 @@ class Cast:
 
     def cast_line(self, character, fish, bait, surface, menu_theme, location, screen_width, screen_height):
         font = pygame.font.Font(None, 24)
-        combat_log = CombatLog(600, 400, 200, 200, font, surface)
+        log_width = screen_width * 2/3
+        log_height = screen_height / 8
+        log_x = 10
+        log_y = screen_height - log_height -60
+
+        combat_log = CombatLog(log_x, log_y, log_width, log_height, font, surface)
         self.bite(
             character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log
         )  # TODO lots of casting logic, this is for testing

@@ -52,7 +52,7 @@ def available_locations(character):
     ]
 
 
-def choose_location(character, surface, menu_theme, screen_width, screen_height):
+def choose_location(character, surface, clock, menu_theme, screen_width, screen_height):
     menu = pygame_menu.Menu("World Map", screen_width, screen_height, theme=menu_theme)
     available = available_locations(character)
     for i, location in enumerate(available, 1):
@@ -61,6 +61,7 @@ def choose_location(character, surface, menu_theme, screen_width, screen_height)
             go_fishing,
             character,
             surface,
+            clock,
             menu_theme,
             location,
             screen_width,
@@ -92,13 +93,13 @@ def display_equipment(character):
     )
 
 
-def go_fishing(character, surface, menu_theme, location, screen_width, screen_height):
+def go_fishing(character, surface, clock, menu_theme, location, screen_width, screen_height):
 
     # location = choose_location(character, surface, menu_theme)
     fish = location.get_fish()
     bait = character.gear[0]["bait"]
     cast = Cast()
-    cast.cast_line(character, fish, bait, surface, menu_theme, location, screen_width, screen_height)
+    cast.cast_line(character, fish, bait, surface, clock, menu_theme, location, screen_width, screen_height)
 
 
 def load_save_data(character_id):

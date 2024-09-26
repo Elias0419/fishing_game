@@ -1,5 +1,6 @@
 import os
 import pickle
+import sys
 
 import pygame_menu
 import pygame
@@ -44,6 +45,7 @@ def game_interface(character):
         choose_location,
         character,
         surface,
+        clock,
         menu_theme,
         screen_width,
         screen_height,

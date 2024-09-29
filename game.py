@@ -120,7 +120,9 @@ def load_game():
         # print("\nSaved games:")
         for file in saved_files:
             with open(f"saved_data/{file}", "rb") as f:
-                character_state, _, _ = pickle.load(f)
+                states = pickle.load(f)
+                # print(states) # DEBUG
+                character_state, _, _ = states
                 character_names.append(character_state.name)
 
         def load_selected_game(menu, save_file):
@@ -130,7 +132,7 @@ def load_game():
             character_data = generate_default_character_data()
             dummy_character = Character(**character_data)
             state_manager.apply_state(character_state, dummy_character)
-            print(f"Loaded game: {dummy_character.name}")
+            # print(f"Loaded game: {dummy_character.name}") # DELETE ME
 
             game_interface(dummy_character)
 

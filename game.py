@@ -2,8 +2,13 @@ import os
 import pickle
 import sys
 
-import pygame_menu
+
 import pygame
+pygame.init()
+import pygame_menu
+
+from conf import init, get_globals
+init()
 
 from character import Character
 from locations import World
@@ -16,21 +21,11 @@ from util import (
 from state_manager import StateManager, BattleState
 state_manager = StateManager()
 
+clock, screen_width, screen_height, surface, menu_theme, font, global_log = get_globals()
 
-pygame.init()
-clock = pygame.time.Clock()
-info_object = pygame.display.Info()
-screen_width, screen_height = info_object.current_w, info_object.current_h
 
-surface = pygame.display.set_mode(  # , pygame.DOUBLEBUF | pygame.FULLSCREEN
-    (screen_width, screen_height)
-)
-pygame.display.set_caption("Fishing RPG")
-menu_theme = pygame_menu.themes.THEME_DARK.copy()
-menu_theme.title_offset = (5, -2)
-menu_theme.widget_font_size = 25
-menu_theme.menu_width = int(screen_width * 0.9)
-menu_theme.menu_height = int(screen_height * 0.9)
+
+
 
 
 def game_interface(character):
@@ -42,13 +37,7 @@ def game_interface(character):
     menu.add.button("Show Equipment", display_equipment, character)
     menu.add.button(
         "Go Fishing",
-        choose_location,
-        character,
-        surface,
-        clock,
-        menu_theme,
-        screen_width,
-        screen_height,
+        choose_location, character
     )
     # menu.add.button("Test", test, character)
     menu.add.button("Quit", pygame_menu.events.EXIT)
@@ -196,7 +185,7 @@ def main_menu():
 
 
 while True:
-    clock.tick(60)
+    clock.tick(30)
     main_menu()
 
 pygame.quit()

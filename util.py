@@ -9,7 +9,9 @@ from state_manager import WorldState, LocationState, StateManager
 from battle import Cast
 import pygame
 import pygame_menu
+from conf import get_globals
 
+clock, screen_width, screen_height, surface, menu_theme, font, global_log = get_globals()
 
 def log_output(func):
     def wrapper(*args, **kwargs):
@@ -52,7 +54,7 @@ def available_locations(character):
     ]
 
 
-def choose_location(character, surface, clock, menu_theme, screen_width, screen_height):
+def choose_location(character):
     menu = pygame_menu.Menu("World Map", screen_width, screen_height, theme=menu_theme)
     available = available_locations(character)
     for i, location in enumerate(available, 1):
@@ -60,12 +62,7 @@ def choose_location(character, surface, clock, menu_theme, screen_width, screen_
             f"{i}. {location.name}",
             go_fishing,
             character,
-            surface,
-            clock,
-            menu_theme,
             location,
-            screen_width,
-            screen_height,
         )
 
     while True:
@@ -93,13 +90,13 @@ def display_equipment(character):
     )
 
 
-def go_fishing(character, surface, clock, menu_theme, location, screen_width, screen_height):
+def go_fishing(character, location):
 
     # location = choose_location(character, surface, menu_theme)
     fish = location.get_fish()
     bait = character.gear[0]["bait"]
-    cast = Cast()
-    cast.cast_line(character, fish, bait, surface, clock, menu_theme, location, screen_width, screen_height)
+    cast = Cast(character, fish, bait, location)
+    cast.cast_line()
 
 
 def load_save_data(character_id):

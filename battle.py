@@ -21,11 +21,54 @@ POPUP_EVENT = pygame.USEREVENT + 1
 popup_queue = deque()
 
 
+################################################################
+################################################################
+import pprint
+import inspect
+
+def debug_print(*args):
+    pp = pprint.PrettyPrinter(indent=4)
+    frame = inspect.currentframe()
+    try:
+        caller = inspect.getouterframes(frame)[1]
+        frameinfo = inspect.getframeinfo(caller[0])
+        args_name = inspect.getargvalues(caller[0]).locals
+        arg_names = frameinfo.code_context[0].strip().split("debug_print(")[1].split(")")[0].replace(" ", "").split(",")
+
+        for arg_name, obj in zip(arg_names, args):
+            print(f"\n\nName: {arg_name}")
+            print("Type:", type(obj))
+            print("Value:")
+            pp.pprint(obj)
+            print("-" * 40, "\n\n")
+    finally:
+        del frame
+################################################################
+################################################################
+
+
 class CharacterStatusBox:
-    def __init__(self, x, y):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.font = font
-        self.surface = surface
+    def __init__(self, character):
+        self.character = character
+        self.width = screen_width * 1/8
+        self.height = screen_height / 8
+        self.x = 10
+        self.y = 100
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+    def draw(self, surface, font):
+
+        surface.fill((0, 0, 0), self.rect)
+
+        stamina_text = f"Stamina: {self.character.stamina}"
+        # health_text = f"Health: {self.character.health}"
+        test_text = f"{stamina_text}\nBlah blah blah"
+
+        # Render the text
+        text_surf = font.render(test_text, True, (255, 255, 255))
+        surface.blit(text_surf, (self.x + 10, self.y + 10))
+
+
 
 
 class FishStatusBox:
@@ -44,8 +87,7 @@ class CombatLog: # Lazy init?
         if not hasattr(self, "_init"):
 
             self.rect = pygame.Rect(x, y, log_width, log_height)
-            self.font = font
-            self.surface = surface
+
             self.messages = []
             self.visible_messages = self.rect.height // 20
             self.combat_log_start_index = 0
@@ -61,20 +103,28 @@ class CombatLog: # Lazy init?
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 4:  # Scroll up
-                self.combat_log_start_index = max(0, self.combat_log_start_index - 1)
-            elif event.button == 5:  # Scroll down
-                self.combat_log_start_index = min(len(self.messages) - self.visible_messages, self.combat_log_start_index + 1)
+            try:
+                if event.button == 4:  # Scroll up
+                    self.combat_log_start_index = max(0, self.combat_log_start_index - 1)
+                elif event.button == 5:  # Scroll down
+                    self.combat_log_start_index = min(len(self.messages) - self.visible_messages, self.combat_log_start_index + 1)
+            except IndexError as e:
+                pass
 
     def draw(self):
+
         surface.fill((0, 0, 0), self.rect)
         start_y = self.rect.bottom - 20
         end_index = min(self.combat_log_start_index + self.visible_messages, len(self.messages))
 
         for i in range(self.combat_log_start_index, end_index):
-            text_surf = font.render(self.messages[i], True, (255, 255, 255))
-            surface.blit(text_surf, (self.rect.x + 5, start_y))
-            start_y -= 20
+            try:
+                text_surf = font.render(self.messages[i], True, (255, 255, 255))
+                surface.blit(text_surf, (self.rect.x + 5, start_y))
+                start_y -= 20
+            except IndexError as e:
+                pass
+
 
 
 
@@ -152,13 +202,13 @@ def get_level_from_experience(experience):
 
 
 class Battle:
-    def __init__(self):
+    def __init__(self, character):
         self.drag_too_high_count = 0
         self.drag_too_low_count = 0
         # self.drag_init_flag = False
         self.max_safe_drag = None
         self.first_round = True
-        self.combat_log = global_log
+        self.character_status_box = CharacterStatusBox(character)
 
     def battle_fish(self, character, fish, bait, location, difficulty):
 
@@ -196,24 +246,30 @@ class Battle:
             for event in events:
                 if event.type == pygame.QUIT:
                     exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_a:
+                        self.reel(difficulty, character, fish, bait)
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 4:  # Scroll up
                         try:
-                            self.combat_log.combat_log_start_index = max(0, self.combat_log.combat_log_start_index - 1)
+                            global_log.combat_log_start_index = max(0, global_log.combat_log_start_index - 1)
                         except IndexError:
                             pass
                     elif event.button == 5:  # Scroll down
                         try:
-                            self.combat_log.combat_log_start_index = min(len(self.combat_log.messages) - self.combat_log.visible_messages, self.combat_log.combat_log_start_index + 1)
+                            global_log.combat_log_start_index = min(len(global_log.messages) - global_log.visible_messages, global_log.combat_log_start_index + 1)
 
                         except IndexError:
                             pass
 
             menu.update(events)
             menu.draw(surface)
-            self.combat_log.draw()
+            global_log.draw()
+            self.character_status_box.draw(surface, font)
             show_popups(surface)
             pygame.display.flip()
+
+
         # print(character, fish, bait, surface, menu_theme, location, screen_width, screen_height, combat_log, difficulty)
         # pre_battle_fish_stamina = fish.stamina
         # while True:
@@ -285,6 +341,7 @@ class Battle:
         #     else:
         #         print("Please enter a valid number.")
 
+    @LogDecorator(log=get_global_log())
     def calculate_drag(
         self, difficulty, character, fish, bait, adjustment=0, adjustment_direction=None
     ):
@@ -295,16 +352,16 @@ class Battle:
         reel_current_drag = reel.drag_lbs
         baseline_max_safe_drag = int(min(line_strength, reel_max_drag) * 0.8)
 
-        print(  # DEBUG remove me
-            "\nInside calculate_drag\nMax:",
-            reel_max_drag,
-            "\nCurrent",
-            reel_current_drag,
-            "\nAdjustment",
-            adjustment,
-            "\nDirection",
-            adjustment_direction,
-        )
+        # print(  # DEBUG remove me
+        #     "\nInside calculate_drag\nMax:",
+        #     reel_max_drag,
+        #     "\nCurrent",
+        #     reel_current_drag,
+        #     "\nAdjustment",
+        #     adjustment,
+        #     "\nDirection",
+        #     adjustment_direction,
+        # )
 
         state_manager = StateManager()
         _, battle_state, _ = state_manager.load_state(f"{character.character_id}.pkl")
@@ -318,7 +375,8 @@ class Battle:
                 self.max_safe_drag += adjustment
             elif adjustment_direction == "up":
                 self.max_safe_drag -= adjustment
-        world = World.get_instance()
+        world = World.get_instance(character)
+        # debug_print(character, self, world) # DEBUG
         state_manager.save_state(
             f"{character.character_id}.pkl", character, self, world
         )
@@ -326,15 +384,15 @@ class Battle:
             max(0.5 * fish_weight, baseline_max_safe_drag * 0.5)
         )  # * difficulty # Character skill here probably
 
-        print(  # DEBUG remove me
-            "Minimum effective drag:",
-            minimum_effective_drag,
-            "\nMaximum safe drag:",
-            self.max_safe_drag,
-        )
+        # print(  # DEBUG remove me
+        #     "Minimum effective drag:",
+        #     minimum_effective_drag,
+        #     "\nMaximum safe drag:",
+        #     self.max_safe_drag,
+        # )
         if fish_weight > self.max_safe_drag:
-            print(
-                f"{reel.name} screams under the weight of the fish!\nReduce the drag before something breaks!"
+            add_popup(
+                f"{reel.name} screams under the weight of the fish!\nReduce the drag before something breaks!", to_combat_log=True
             )
             self.drag_too_high()
         else:
@@ -570,11 +628,16 @@ class Cast:
     def __init__(self, character, fish, bait, location):
         self.get_log()
         self.character = character
+        # self.character_box_test() # REMOVE ME
+
         self.fish = fish
         self.bait = bait
 
 
         self.location = location
+
+    # def character_box_test(self): # REMOVE ME
+    #     CharacterStatusBox(self.character)
 
 
     def get_log(self):
@@ -587,8 +650,6 @@ class Cast:
 
 
     def cast_line(self):
-
-
         # combat_log = CombatLog(log_x, log_y, log_width, log_height, font, surface)
         # init_global_log(log_x, log_y, log_width, log_height, font, self.surface) # Going to need to fix this someday, maybe
         self.bite()  # TODO lots of casting logic, this is for testing
@@ -599,10 +660,10 @@ class Cast:
         else:
             if self.fish.eats == ["all"]:
 
-                battle = Battle()
+                battle = Battle(self.character)
                 battle.battle_fish(self.character, self.fish, self.bait, self.location)
             elif self.bait.name in self.fish.eats:
-                battle = Battle()
+                battle = Battle(self.character)
                 battle.battle_fish(self.character, self.fish, self.bait) # TODO
             else:
                 self.wrong_bait_message()
@@ -670,7 +731,7 @@ class Cast:
             # Combat Log: {combat_log}
             # Difficulty: {difficulty}
             # """)
-        battle = Battle()
+        battle = Battle(self.character)
         battle.battle_fish(self.character, self.fish, self.bait,  self.location, difficulty)
 
         # choice = input(

@@ -6,6 +6,7 @@ import importlib
 from state_manager import StateManager
 
 
+
 @dataclass
 class Location:
     name: str = "Generic Location"
@@ -15,6 +16,11 @@ class Location:
     wind: str = "still"
     fish_probability: dict[str, float] = field(default_factory=lambda: {"any": 1})
     unlocked: bool = False
+    coordinates: list[tuple[int, int]] = field(default_factory=list)
+
+    def occupies(self, x, y):
+        return (x, y) in self.coordinates
+
 
     def get_fish(self):
         fish_types = list(self.fish_probability.keys())
@@ -24,6 +30,45 @@ class Location:
         fish_class = getattr(fish_module, fish_class_name)
         return fish_class()
 
+
+def get_location_list():
+    locations = [
+                    NeighborhoodPond(),
+                    StreamInTheWoods(),
+                ]
+    return locations
+
+@dataclass
+class NeighborhoodPond(Location):
+    name: str = "Neighborhood Pond"
+    unlocked: bool = True
+    coordinates: list[tuple[int, int]] = field(default_factory=lambda: [(60, 60)])
+    fish_probability: dict[str, float] = field(
+        default_factory=lambda: {
+            "Goldfish": 1,
+            # "Goldfish": 0.5, # TEST
+            # "Bluegill": 0.3,
+            # "Catfish": 0.1,
+            # "Carp": 0.05,
+            # "Sunfish": 0.05
+        }
+    )
+
+
+
+@dataclass
+class StreamInTheWoods(Location):
+    name: str = "Stream in the Woods"
+    water_movement: str = "flowing"
+    wind: str = "light_breeze"
+    fish_probability: dict[str, float] = field(
+        default_factory=lambda: {
+            "Trout": 0.4,
+            "Salmon": 0.15,
+            "Sturgeon": 0.1,
+            "Minnow": 0.05,
+        }
+    )
 
 @dataclass
 class World:
@@ -44,17 +89,7 @@ class World:
             return world_state
         else:
             return World(
-                locations=[
-                    Location(
-                        name="Neighborhood Pond",
-                        unlocked=True,
-                        fish_probability={"Goldfish": 1},
-                    ),
-                    Location(
-                        name="Stream in the Woods",
-                        fish_probability={"Trout": 0.4, "Salmon": 0.15},
-                    ),
-                ]
+                locations=get_location_list()
             )
 
     def save(self, character):
@@ -64,34 +99,3 @@ class World:
         StateManager.save_state(
             f"{character.character_id}.pkl", character_state, battle_state, self
         )
-
-
-@dataclass
-class NeighborhoodPond(Location):
-    name: str = "Neighborhood Pond"
-    unlocked: bool = True
-    fish_probability: dict[str, float] = field(
-        default_factory=lambda: {
-            "Goldfish": 1,
-            # "Goldfish": 0.5, # TEST
-            # "Bluegill": 0.3,
-            # "Catfish": 0.1,
-            # "Carp": 0.05,
-            # "Sunfish": 0.05
-        }
-    )
-
-
-@dataclass
-class StreamInTheWoods(Location):
-    name: str = "Stream in the Woods"
-    water_movement: str = "flowing"
-    wind: str = "light_breeze"
-    fish_probability: dict[str, float] = field(
-        default_factory=lambda: {
-            "Trout": 0.4,
-            "Salmon": 0.15,
-            "Sturgeon": 0.1,
-            "Minnow": 0.05,
-        }
-    )

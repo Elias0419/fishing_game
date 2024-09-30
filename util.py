@@ -60,12 +60,21 @@ def available_locations(character):
         if player_level >= loc.minimum_level and loc.unlocked
     ]
 
+def check_location(player, locations):
+    player_pos = player.position
+    for location in locations:
+        if location.occupies(player_pos[0], player_pos[1]):
+            print(f"Entered location: {location.name}")
+            break
+
 def choose_location(character):
     grid = Grid(CELL_SIZE, 100)  # 100x100 grid, total size 10,000x10,000
     player = Player(character, grid, (50, 50))
     viewport = Viewport(screen_width, screen_height)
     map_image = load_image('images/grid_map.png', grid.width, grid.height)
     all_sprites = pygame.sprite.Group(player)
+    world = World.get_instance(character)
+    locations = world.locations
 
     while True:
         events = pygame.event.get()
@@ -80,18 +89,20 @@ def choose_location(character):
 
         surface.blit(map_image, (0, 0), viewport.rect)
 
-        # Adjust the drawing of all sprites based on the viewport's current offset
         for sprite in all_sprites:
-            # Calculate the offset position to draw the sprite within the viewport
-            sprite.rect.topleft = (sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[0] - viewport.rect.left,
-                                   sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[1] - viewport.rect.top)
+            new_topleft = (sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[0] - viewport.rect.left,
+                           sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[1] - viewport.rect.top)
+            if sprite.rect.topleft != new_topleft:
+                # print(f"Player moved to {new_topleft} on screen.")
+                sprite.rect.topleft = new_topleft
             surface.blit(sprite.image, sprite.rect)
 
         pygame.display.flip()
         clock.tick(20)
-        print(f"Player grid position: {player.position}, Player pixel position: {player.rect.topleft}")  # Debugging output
+        check_location(player, locations)  # Check for location changes
 
         pygame.display.update()
+
 # def choose_location(character):
 #     menu = pygame_menu.Menu("World Map", screen_width, screen_height, theme=menu_theme)
 #     available = available_locations(character)

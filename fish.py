@@ -14,6 +14,7 @@ def calculate_fish_weight(length_inch):
 class Fish:
     name: str = "Generic Fish"
     stamina: int = 100
+    max_stamina: int = 100
     # length_inch: float = None
     # weight_lbs: float = None # TEST
     minimum_fishing_experience: int = 0
@@ -37,6 +38,7 @@ class Fish:
 class Goldfish(Fish):
     name: str = "Goldfish"
     stamina: int = 10
+    max_stamina: int = 10
     eats: list[str] = field(default_factory=lambda: ["Worm", "Small Bug"])
     specific_type: str = "goldfish"
     subtype: str = "bony_fishes"

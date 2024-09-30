@@ -46,33 +46,86 @@ def debug_print(*args):
 ################################################################
 ################################################################
 
+def render_and_blit(surface, font, text, pos):
+    text_surf = font.render(text, True, (255, 255, 255))
+    surface.blit(text_surf, pos)
+
 
 class CharacterStatusBox:
     def __init__(self, character):
         self.character = character
-        self.width = screen_width * 1/8
-        self.height = screen_height / 8
+        self.width = screen_width * 1/7
+        self.height = screen_height / 7
         self.x = 10
         self.y = 100
         self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
 
-    def draw(self, surface, font):
+    def draw(self):
 
         surface.fill((0, 0, 0), self.rect)
+        character_name = self.character.name
+        stamina_text = f"Stamina: {self.character.stamina}/{self.character.max_stamina}"
+        reel_name, reel_max_drag, reel_current_drag = self.get_reel_details()
+        reel_drag_text = f"Drag: {reel_current_drag}/{reel_current_drag}"
+        render_and_blit(surface, font, character_name, (self.x + 10, self.y + 10))
+        # TEST +15 for now
+        render_and_blit(surface, font, stamina_text, (self.x + 10, self.y + 25))
+        render_and_blit(surface, font, reel_name, (self.x + 10, self.y + 40))
+        render_and_blit(surface, font, reel_drag_text, (self.x + 10, self.y + 55))
 
-        stamina_text = f"Stamina: {self.character.stamina}"
-        # health_text = f"Health: {self.character.health}"
-        test_text = f"{stamina_text}\nBlah blah blah"
-
-        # Render the text
-        text_surf = font.render(test_text, True, (255, 255, 255))
-        surface.blit(text_surf, (self.x + 10, self.y + 10))
-
+    def get_reel_details(self):
+        reel = self.character.gear[0]["rod"].reel
+        reel_name = reel.name
+        reel_max_drag = reel.max_drag
+        reel_current_drag = reel.drag_lbs
+        return reel_name, reel_max_drag, reel_current_drag
 
 
 
 class FishStatusBox:
-    pass
+    def __init__(self, fish):
+        self.fish = fish
+        self.width = screen_width * 1/7
+        self.height = screen_height / 7
+        self.x = 350
+        self.y = 100
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+    def draw(self):
+
+        surface.fill((0, 0, 0), self.rect)
+        fish_name, fish_stamina_string = self.get_fish_details()
+        render_and_blit(surface, font, fish_name, (self.x + 10, self.y + 10))
+        render_and_blit(surface, font, fish_stamina_string, (self.x + 10, self.y + 25))
+
+    def get_fish_details(self): # TODO
+        # experience can unlock things like - being able to see stamina details, fish name, weight, etc
+        # otherwise we give generic statements like "the fish feels heavy", etc
+        # for example
+        # if character.experience_skills.fish_identification_level >= fish.minimum_identification_level:
+        #     fish_name = fish.name
+        # else:
+        #     fish_name = "???"
+        # we can also do stuff like
+        # if character.experience_skills.{fish.name}.has_been_identified: # (for example, caught 100 of them and now can identify by feel)
+        #    pass
+        # or
+        # if character.experience_skills.fish_weight_estimation < 10:
+        #   fish_weight = "That's a heavy one!"
+        # elif character.experience_skills.fish_weight_estimation >10 and <90:
+        #     fish_weight = "Feels like about {fish_weight} * {some_random_innaccuracy}"
+        # elif character.experience_skills.fish_weight_estimation >=90:
+        #     fish_weight = fish.weight
+
+        """
+        TEST
+        For development we'll just show these details
+        """
+        fish_name = self.fish.name
+        fish_stamina_string = f"{self.fish.stamina}/{self.fish.max_stamina}"
+
+        return fish_name, fish_stamina_string
+
 
 
 class CombatLog: # Lazy init?
@@ -98,7 +151,6 @@ class CombatLog: # Lazy init?
     def add_message(self, message):
         lines = message.split('\n')
         self.messages.extend(lines)
-        # Update start_index to show the latest messages
         self.combat_log_start_index = max(0, len(self.messages) - self.visible_messages)
 
     def handle_event(self, event):
@@ -178,7 +230,7 @@ def add_popup(message, duration=2000, x=320, y=240, font='Arial', font_size=36, 
     if to_combat_log:
         print(message)
 
-def show_popups(surface):
+def show_popups():
     current_time = pygame.time.get_ticks()
     if popup_queue:
         message, start_time, duration, x, y, font = popup_queue[0]
@@ -202,13 +254,14 @@ def get_level_from_experience(experience):
 
 
 class Battle:
-    def __init__(self, character):
+    def __init__(self, character, fish):
         self.drag_too_high_count = 0
         self.drag_too_low_count = 0
         # self.drag_init_flag = False
         self.max_safe_drag = None
         self.first_round = True
         self.character_status_box = CharacterStatusBox(character)
+        self.fish_status_box = FishStatusBox(fish)
 
     def battle_fish(self, character, fish, bait, location, difficulty):
 
@@ -265,8 +318,9 @@ class Battle:
             menu.update(events)
             menu.draw(surface)
             global_log.draw()
-            self.character_status_box.draw(surface, font)
-            show_popups(surface)
+            self.character_status_box.draw()
+            self.fish_status_box.draw()
+            show_popups()
             pygame.display.flip()
 
 
@@ -616,9 +670,52 @@ class Battle:
         self.print_battle_summary(difficulty, character, fish, bait, exp)
 
     def print_battle_summary(self, difficulty, character, fish, bait, exp):
-        print(
-            f"You caught a {fish.name}!\nDifficulty: {difficulty}\nLength: {fish.length_inch:.2f} inches\nWeight: {fish.weight_lbs:.2f} pounds\n\nYou gained {exp} fishing experience!"
-        )
+        window_width = int(screen_width * 0.3)
+        window_height = int(screen_height * 0.3)
+        battle_summary_surface = pygame.Surface((window_width, window_height))
+
+        text_color = pygame.Color('black')
+        background_color = pygame.Color('white')
+
+        messages = [
+            f"You caught a {fish.name}!",
+            f"Difficulty: {difficulty}",
+            f"Length: {fish.length_inch:.2f} inches",
+            f"Weight: {fish.weight_lbs:.2f} pounds",
+            f"You gained {exp} fishing experience!"
+        ]
+
+        battle_summary_surface.fill(background_color)
+
+        y = 10
+        for message in messages:
+            text_surface = font.render(message, True, text_color)
+            battle_summary_surface.blit(text_surface, (10, y))
+            y += text_surface.get_height() + 5  # Increment y offset
+
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+
+        # TODO figure out why the button doesn't show
+        ok_button = pygame.Rect(x + window_width - 90, y + window_height - 40, 80, 30)
+        pygame.draw.rect(battle_summary_surface, pygame.Color('lightskyblue'), ok_button)
+        ok_text = font.render("OK", True, text_color)
+        battle_summary_surface.blit(ok_text, ok_button)
+
+        surface.blit(battle_summary_surface, (x, y))
+        pygame.display.update()
+
+        summary_open = True
+        while summary_open:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if ok_button.collidepoint(event.pos):
+                        summary_open = False  # Close the summary
+
+
 
     def random_chance(self, percent):
         return random.random() < percent / 100
@@ -660,10 +757,10 @@ class Cast:
         else:
             if self.fish.eats == ["all"]:
 
-                battle = Battle(self.character)
+                battle = Battle(self.character, self.fish)
                 battle.battle_fish(self.character, self.fish, self.bait, self.location)
             elif self.bait.name in self.fish.eats:
-                battle = Battle(self.character)
+                battle = Battle(self.character, self.fish)
                 battle.battle_fish(self.character, self.fish, self.bait) # TODO
             else:
                 self.wrong_bait_message()
@@ -680,7 +777,9 @@ class Cast:
         print(random.choice(messages))
 
     def level_too_low(self):
-        add_popup("\nYou hooked a big one!", to_combat_log=True)# Example using both combat log and popup)  # creating difficulties here that get passed through the battle functions
+        # Example using both combat log and popup)
+        add_popup("\nYou hooked a big one!", to_combat_log=True)
+        # creating difficulties here that get passed through the battle functions
         if self.character.fishing_experience * 2 >= self.fish.minimum_fishing_experience:
             print("\nIt feels like you have a fair chance to beat this one.")
             self.continue_or_quit(difficulty="easy")
@@ -698,6 +797,7 @@ class Cast:
             self.continue_or_quit(difficulty="impossible")
 
     def continue_or_quit(self, difficulty):
+        # TODO probably only do this on hard+
 
         menu = pygame_menu.Menu("", screen_width, screen_height, theme=menu_theme)
         menu.add.label(f"The fish is {difficulty}")
@@ -731,7 +831,7 @@ class Cast:
             # Combat Log: {combat_log}
             # Difficulty: {difficulty}
             # """)
-        battle = Battle(self.character)
+        battle = Battle(self.character, self.fish)
         battle.battle_fish(self.character, self.fish, self.bait,  self.location, difficulty)
 
         # choice = input(

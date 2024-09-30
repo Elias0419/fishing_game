@@ -2,13 +2,17 @@ import pickle
 import os
 import random
 
+import pygame
+import pygame_menu
+
 from rods import Twig, TenLbMono, Reel
 from bait import Worm
 from locations import Location, World, StreamInTheWoods
 from state_manager import WorldState, LocationState, StateManager
 from battle import Cast
-import pygame
-import pygame_menu
+from world_map import Grid, Viewport, CELL_SIZE
+from character import Character, Player
+
 from conf import get_globals
 
 clock, screen_width, screen_height, surface, menu_theme, font, global_log = get_globals()
@@ -21,6 +25,9 @@ def log_output(func):
 
     return wrapper
 
+def load_image(path, width, height):
+    image = pygame.image.load(path)
+    return image
 
 def create_log_surface(width, height):
     log_surface = pygame.Surface((width, height))
@@ -53,17 +60,12 @@ def available_locations(character):
         if player_level >= loc.minimum_level and loc.unlocked
     ]
 
-
 def choose_location(character):
-    menu = pygame_menu.Menu("World Map", screen_width, screen_height, theme=menu_theme)
-    available = available_locations(character)
-    for i, location in enumerate(available, 1):
-        menu.add.button(
-            f"{i}. {location.name}",
-            go_fishing,
-            character,
-            location,
-        )
+    grid = Grid(CELL_SIZE, 100)  # 100x100 grid, total size 10,000x10,000
+    player = Player(character, grid, (50, 50))
+    viewport = Viewport(screen_width, screen_height)
+    map_image = load_image('images/grid_map.png', grid.width, grid.height)
+    all_sprites = pygame.sprite.Group(player)
 
     while True:
         events = pygame.event.get()
@@ -72,10 +74,46 @@ def choose_location(character):
                 pygame.quit()
                 exit()
 
-        if menu.is_enabled():
-            menu.update(events)
-            menu.draw(surface)
+        keys_pressed = pygame.key.get_pressed()
+        player.update(keys_pressed)
+        viewport.center_on(player, grid)
+
+        surface.blit(map_image, (0, 0), viewport.rect)
+
+        # Adjust the drawing of all sprites based on the viewport's current offset
+        for sprite in all_sprites:
+            # Calculate the offset position to draw the sprite within the viewport
+            sprite.rect.topleft = (sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[0] - viewport.rect.left,
+                                   sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[1] - viewport.rect.top)
+            surface.blit(sprite.image, sprite.rect)
+
+        pygame.display.flip()
+        clock.tick(20)
+        print(f"Player grid position: {player.position}, Player pixel position: {player.rect.topleft}")  # Debugging output
+
         pygame.display.update()
+# def choose_location(character):
+#     menu = pygame_menu.Menu("World Map", screen_width, screen_height, theme=menu_theme)
+#     available = available_locations(character)
+#     for i, location in enumerate(available, 1):
+#         menu.add.button(
+#             f"{i}. {location.name}",
+#             go_fishing,
+#             character,
+#             location,
+#         )
+#
+#     while True:
+#         events = pygame.event.get()
+#         for event in events:
+#             if event.type == pygame.QUIT:
+#                 pygame.quit()
+#                 exit()
+#
+#         if menu.is_enabled():
+#             menu.update(events)
+#             menu.draw(surface)
+#         pygame.display.update()
 
 
 def display_stats(character):

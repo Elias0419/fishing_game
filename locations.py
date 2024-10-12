@@ -5,7 +5,12 @@ from random import choices
 import importlib
 from state_manager import StateManager
 
-
+def get_location_list():
+    locations = [
+                    NeighborhoodPond(),
+                    StreamInTheWoods(),
+                ]
+    return locations
 
 @dataclass
 class Location:
@@ -31,18 +36,13 @@ class Location:
         return fish_class()
 
 
-def get_location_list():
-    locations = [
-                    NeighborhoodPond(),
-                    StreamInTheWoods(),
-                ]
-    return locations
+
 
 @dataclass
 class NeighborhoodPond(Location):
     name: str = "Neighborhood Pond"
     unlocked: bool = True
-    coordinates: list[tuple[int, int]] = field(default_factory=lambda: [(60, 60)])
+    coordinates: list[tuple[int, int]] = field(default_factory=lambda: [(50, 51)])
     fish_probability: dict[str, float] = field(
         default_factory=lambda: {
             "Goldfish": 1,

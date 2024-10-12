@@ -17,6 +17,65 @@ from conf import get_globals
 
 clock, screen_width, screen_height, surface, menu_theme, font, global_log = get_globals()
 
+def create_popup(text, buttons=None):
+
+    width, height = 300, 200
+    x, y = (screen_width - width) // 2, (screen_height - height) // 2
+
+    popup_surface = pygame.Surface((width, height))
+    popup_surface.fill(getattr(menu_theme, 'background_color', (100, 100, 100)))
+
+    text_surface = font.render(text, True, getattr(menu_theme, 'text_color', (255, 255, 255)))
+    text_rect = text_surface.get_rect(center=(width // 2, height // 3))
+
+    button_objects = []
+    if buttons:
+        button_width, button_height = 80, 30
+        spacing = (width - len(buttons) * button_width) // (len(buttons) + 1)
+        for index, (label, callback) in enumerate(buttons):
+            button_x = spacing + index * (button_width + spacing)
+            button_y = height - button_height - 20
+            button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+            button_text = font.render(label, True, getattr(menu_theme, 'button_text_color', (0, 0, 0)))
+            button_objects.append({'rect': button_rect, 'text': button_text, 'callback': callback})
+
+    return {
+        'surface': popup_surface,
+        'text_surface': text_surface,
+        'text_rect': text_rect,
+        'buttons': button_objects,
+        'x': x,
+        'y': y
+    }
+
+def run_popup(popup):
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+                for button in popup['buttons']:
+                    if button['rect'].collidepoint(mouse_pos[0] - popup['x'], mouse_pos[1] - popup['y']):
+                        button['callback']()
+
+        surface.blit(popup['surface'], (popup['x'], popup['y']))
+        surface.blit(popup['text_surface'], popup['text_rect'].topleft)
+        for button in popup['buttons']:
+            pygame.draw.rect(surface, getattr(menu_theme, 'button_color', (200, 200, 200)), button['rect'].move(popup['x'], popup['y']))
+            surface.blit(button['text'], button['rect'].move(popup['x'], popup['y']).topleft) # FIXME text missing
+        pygame.display.update()
+        clock.tick(30)
+
+def check_popup_interaction(popup, event):
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        x, y = event.pos
+        for button in popup['buttons']:
+            if button['rect'].collidepoint(x, y):
+                button['callback']()
+
 def log_output(func):
     def wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
@@ -60,12 +119,38 @@ def available_locations(character):
         if player_level >= loc.minimum_level and loc.unlocked
     ]
 
-def check_location(player, locations):
+def check_location(player, locations, character):
     player_pos = player.position
     for location in locations:
         if location.occupies(player_pos[0], player_pos[1]):
+            do_you_want_to_enter_location(character, location)
             print(f"Entered location: {location.name}")
             break
+
+def do_you_want_to_enter_location(character, location):
+    location_text = f"{location.name} test"
+    # popup_width, popup_height = int(screen_width / 3), int(screen_height / 3)
+    buttons = [
+    ("Enter", lambda: go_fishing(character, location)),
+    ("Decline", lambda: decline_location(character, location))
+    ]
+    popup = create_popup(location_text, buttons)
+    run_popup(popup)
+    # # print(popup_width, popup_height)
+    # popup_surface = pygame.Surface(popup_width, popup_height)
+    # while True:
+    #     events = pygame.event.get()
+    #     for event in events:
+    #         if event.type == pygame.QUIT:
+    #             pygame.quit()
+    #             exit()
+    #     popup_surface.blit(location_text)
+    #     surface.blit(popup_surface)
+
+    # go_fishing(character, location)
+
+def decline_location(character, location):
+    print("decline") # TODO
 
 def choose_location(character):
     grid = Grid(CELL_SIZE, 100)  # 100x100 grid, total size 10,000x10,000
@@ -99,7 +184,7 @@ def choose_location(character):
 
         pygame.display.flip()
         clock.tick(20)
-        check_location(player, locations)  # Check for location changes
+        check_location(player, locations, character)  # Check for location changes
 
         pygame.display.update()
 

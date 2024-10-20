@@ -4,23 +4,28 @@ import random
 
 import pygame
 import pygame_menu
+import pygame_gui
 
-from rods import Twig, TenLbMono, Reel
-from bait import Worm
+
 # from locations import Location, World, StreamInTheWoods
 from state_manager import WorldState, LocationState, StateManager
+
 # from battle import Cast, LoopController, LoopControllerManager
 # from world_map import Grid, Viewport, CELL_SIZE
 # from character import Character, Player
 
 from conf import get_globals
 
-clock, screen_width, screen_height, surface, menu_theme, font, global_log = get_globals()
+clock, screen_width, screen_height, surface, menu_theme, font, global_log, manager = (
+    get_globals()
+)
+
 
 class LoopController:
     def __init__(self, controller_id):
         self.active = True
         self.id = controller_id
+
 
 class LoopControllerManager:
     _instances = {}
@@ -36,10 +41,92 @@ class LoopControllerManager:
         if controller_id in cls._instances:
             cls._instances[controller_id].active = False
 
-    @classmethod # DEBUG
+    @classmethod  # DEBUG
     def print_all_loop_instances(cls):
         for i, instance in enumerate(cls._instances):
             print(i, instance, cls._instances[instance].active)
+
+
+import pygame
+import pygame_gui
+
+class Popup:
+    def __init__(
+        self,
+        manager,
+        text,
+        buttons,
+        position=None,
+        text_area_size=None,
+        button_size=(80, 30),
+        size=(300, 200),
+        label_position = None,
+        style=None,
+        debug=False,
+    ):
+        if position is None:
+            x = (screen_width - size[0]) // 2
+            y = (screen_height - size[1]) // 2
+            position = (x, y)
+
+        if style is None:
+            style = {}
+        window_style = style.get("window", {})
+        label_style = style.get("label", {})
+        button_style = style.get("button", {})
+
+
+
+        self.window = pygame_gui.elements.UIWindow(
+            rect=pygame.Rect(position, size),
+            manager=manager,
+            window_display_title="",
+            resizable=False,
+            **window_style,
+        )
+
+        if text_area_size is None:
+            text_area_size = (size[0] - 20, size[1] - 100)
+        if label_position is None:
+            label_position = (10, 10)
+
+        label_rect = pygame.Rect(label_position, text_area_size)
+
+
+        self.text = pygame_gui.elements.UILabel(
+            relative_rect=label_rect,
+            text=text,
+            manager=manager,
+            container=self.window,
+            **label_style,
+        )
+
+        self.buttons = []
+        button_width, button_height = button_size
+        button_y = size[1] - button_height - 25
+        spacing = (size[0] - len(buttons) * button_width) // (len(buttons) + 1)
+
+        for index, (label, callback) in enumerate(buttons):
+            button_x = spacing + index * (button_width + spacing)
+            button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((button_x, button_y), button_size),
+                text=label,
+                manager=manager,
+                container=self.window,
+                **button_style,
+            )
+            self.buttons.append((button, callback))
+
+
+    def handle_event(self, event):
+        for button, callback in self.buttons:
+            if (
+                event.type == pygame_gui.UI_BUTTON_PRESSED
+                and event.ui_element == button
+            ):
+                callback()
+                self.window.kill()
+
 
 def get_level_from_experience(experience):
     level_map = create_level_map()
@@ -48,8 +135,10 @@ def get_level_from_experience(experience):
             return level
     return 10
 
-def create_level_map(): # FIXME
+
+def create_level_map():  # FIXME
     return {x: 100 * 2 ** (x - 10) for x in range(10, 101)}
+
 
 def create_popup(text, buttons=None):
 
@@ -57,9 +146,11 @@ def create_popup(text, buttons=None):
     x, y = (screen_width - width) // 2, (screen_height - height) // 2
 
     popup_surface = pygame.Surface((width, height))
-    popup_surface.fill(getattr(menu_theme, 'background_color', (100, 100, 100)))
+    popup_surface.fill(getattr(menu_theme, "background_color", (100, 100, 100)))
 
-    text_surface = font.render(text, True, getattr(menu_theme, 'text_color', (255, 255, 255)))
+    text_surface = font.render(
+        text, True, getattr(menu_theme, "text_color", (255, 255, 255))
+    )
     text_rect = text_surface.get_rect(center=(width // 2, height // 3))
 
     button_objects = []
@@ -70,62 +161,75 @@ def create_popup(text, buttons=None):
             button_x = spacing + index * (button_width + spacing)
             button_y = height - button_height - 20
             button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
-            button_text = font.render(label, True, getattr(menu_theme, 'button_text_color', (0, 0, 0)))
-            button_objects.append({'rect': button_rect, 'text': button_text, 'callback': callback})
+            button_text = font.render(
+                label, True, getattr(menu_theme, "button_text_color", (0, 0, 0))
+            )
+            button_objects.append(
+                {"rect": button_rect, "text": button_text, "callback": callback}
+            )
 
     return {
-        'surface': popup_surface,
-        'text_surface': text_surface,
-        'text_rect': text_rect,
-        'buttons': button_objects,
-        'x': x,
-        'y': y
+        "surface": popup_surface,
+        "text_surface": text_surface,
+        "text_rect": text_rect,
+        "buttons": button_objects,
+        "x": x,
+        "y": y,
     }
 
+
 should_close_popup = False
+
 
 def close_popup():
     global should_close_popup
     should_close_popup = True
 
+
 def run_popup(popup):
     global should_close_popup
     running = True
-    popup['should_close'] = False
-
-
+    popup["should_close"] = False
 
     while running:
         if should_close_popup:
-            popup['should_close'] = True
+            popup["should_close"] = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = event.pos
-                for button in popup['buttons']:
-                    if button['rect'].collidepoint(mouse_pos[0] - popup['x'], mouse_pos[1] - popup['y']):
-                        button['callback']()
-                        if popup['should_close']:
+                for button in popup["buttons"]:
+                    if button["rect"].collidepoint(
+                        mouse_pos[0] - popup["x"], mouse_pos[1] - popup["y"]
+                    ):
+                        button["callback"]()
+                        if popup["should_close"]:
                             running = False
 
-        surface.blit(popup['surface'], (popup['x'], popup['y']))
-        surface.blit(popup['text_surface'], popup['text_rect'].topleft)
-        for button in popup['buttons']:
-            pygame.draw.rect(surface, getattr(menu_theme, 'button_color', (200, 200, 200)), button['rect'].move(popup['x'], popup['y']))
-            surface.blit(button['text'], button['rect'].move(popup['x'], popup['y']).topleft) # FIXME text missing
+        surface.blit(popup["surface"], (popup["x"], popup["y"]))
+        surface.blit(popup["text_surface"], popup["text_rect"].topleft)
+        for button in popup["buttons"]:
+            pygame.draw.rect(
+                surface,
+                getattr(menu_theme, "button_color", (200, 200, 200)),
+                button["rect"].move(popup["x"], popup["y"]),
+            )
+            surface.blit(
+                button["text"], button["rect"].move(popup["x"], popup["y"]).topleft
+            )  # FIXME text missing
         pygame.display.update()
         clock.tick(30)
-
 
 
 def check_popup_interaction(popup, event):
 
     if event.type == pygame.MOUSEBUTTONDOWN:
         x, y = event.pos
-        for button in popup['buttons']:
-            if button['rect'].collidepoint(x, y):
-                button['callback']()
+        for button in popup["buttons"]:
+            if button["rect"].collidepoint(x, y):
+                button["callback"]()
+
 
 def log_output(func):
     def wrapper(*args, **kwargs):
@@ -135,9 +239,11 @@ def log_output(func):
 
     return wrapper
 
+
 def load_image(path, width, height):
     image = pygame.image.load(path)
     return image
+
 
 def create_log_surface(width, height):
     log_surface = pygame.Surface((width, height))
@@ -146,8 +252,6 @@ def create_log_surface(width, height):
 
 def update_log(message, log_surface, font, color=(255, 255, 255)):
     text = font.render(message, True, color)
-
-
 
 
 def load_save_data(character_id):
@@ -175,6 +279,9 @@ def generate_character_id():
 
 
 def generate_default_character_data(choice="dummy"):
+    from rods import Twig, TenLbMono, Reel
+    from bait import Worm
+
     character_id = generate_character_id()
     character_data = {
         "character_id": character_id,

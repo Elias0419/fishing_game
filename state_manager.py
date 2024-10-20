@@ -22,6 +22,7 @@ class LocationState:
 class WorldState:
     locations: list[LocationState] = field(default_factory=list)
 
+
 @dataclass
 class GameState:
     character: str
@@ -43,25 +44,28 @@ class CharacterState:
     gear: list = field(default_factory=list)
     boats: list = field(default_factory=list)
 
-GameState = namedtuple('GameState', ['character_state', 'battle_state', 'world_state'])
 
-def is_pickleable(obj, depth=0): # DEBUG REMOVE ME
+GameState = namedtuple("GameState", ["character_state", "battle_state", "world_state"])
+
+
+def is_pickleable(obj, depth=0):  # DEBUG REMOVE ME
     try:
         pickle.dumps(obj)
         return True
     except TypeError as e:
-        print('  ' * depth + f"Failed in {type(obj)}: {e}")
-        if hasattr(obj, '__dict__'):
+        print("  " * depth + f"Failed in {type(obj)}: {e}")
+        if hasattr(obj, "__dict__"):
             for key, val in obj.__dict__.items():
-                print('  ' * depth + f"Checking attribute {key} of type {type(val)}")
+                print("  " * depth + f"Checking attribute {key} of type {type(val)}")
                 is_pickleable(val, depth + 1)
         return False
+
 
 class StateManager:
     @staticmethod
     def save_state(path, *states):
         for state in states:
-            is_pickleable(state) # DEBUG REMOVE ME
+            is_pickleable(state)  # DEBUG REMOVE ME
         with open(f"saved_data/{path}", "wb") as f:
             pickle.dump(states, f)
 

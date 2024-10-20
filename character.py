@@ -4,6 +4,7 @@ from util import get_level_from_experience
 from dataclasses import dataclass, field
 import pygame
 
+
 @dataclass
 class Character:
     character_id: int
@@ -35,11 +36,16 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.Surface((self.size, self.size))
         self.image.fill((255, 0, 0))
         # self.rect = self.image.get_rect(topleft=self.grid.to_pixel(*position))
-        self.rect = pygame.Rect(grid.to_pixel(*initial_position), (self.size, self.size))
+        self.rect = pygame.Rect(
+            grid.to_pixel(*initial_position), (self.size, self.size)
+        )
 
     def move(self, dx, dy):
         new_position = (self.position[0] + dx, self.position[1] + dy)
-        if 0 <= new_position[0] < self.grid.width and 0 <= new_position[1] < self.grid.height:
+        if (
+            0 <= new_position[0] < self.grid.width
+            and 0 <= new_position[1] < self.grid.height
+        ):
             self.position = new_position
             self.rect.topleft = self.grid.to_pixel(*self.position)
 

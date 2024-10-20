@@ -5,12 +5,14 @@ from random import choices
 import importlib
 from state_manager import StateManager
 
+
 def get_location_list():
     locations = [
-                    NeighborhoodPond(),
-                    StreamInTheWoods(),
-                ]
+        NeighborhoodPond(),
+        StreamInTheWoods(),
+    ]
     return locations
+
 
 @dataclass
 class Location:
@@ -27,7 +29,6 @@ class Location:
     def occupies(self, x, y):
         return (x, y) in self.coordinates
 
-
     def get_fish(self):
         fish_types = list(self.fish_probability.keys())
         probabilities = list(self.fish_probability.values())
@@ -35,8 +36,6 @@ class Location:
         fish_module = importlib.import_module("fish")
         fish_class = getattr(fish_module, fish_class_name)
         return fish_class()
-
-
 
 
 @dataclass
@@ -56,7 +55,6 @@ class NeighborhoodPond(Location):
     )
 
 
-
 @dataclass
 class StreamInTheWoods(Location):
     name: str = "Stream in the Woods"
@@ -70,6 +68,7 @@ class StreamInTheWoods(Location):
             "Minnow": 0.05,
         }
     )
+
 
 @dataclass
 class World:
@@ -89,9 +88,7 @@ class World:
         if world_state.locations != []:
             return world_state
         else:
-            return World(
-                locations=get_location_list()
-            )
+            return World(locations=get_location_list())
 
     def save(self, character):
         character_state, battle_state, _ = StateManager.load_state(

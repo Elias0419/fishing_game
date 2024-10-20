@@ -1,10 +1,21 @@
 import pygame
 import pygame_menu
+import pygame_gui
 
-clock, screen_width, screen_height, surface, menu_theme, font, global_log = None, None, None, None, None, None, None
+clock, screen_width, screen_height, surface, menu_theme, font, global_log, manager = (
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+)
+
 
 def init():
-    global clock, screen_width, screen_height, surface, menu_theme, font, global_log
+    global clock, screen_width, screen_height, surface, menu_theme, font, global_log, manager
 
     pygame.init()
 
@@ -13,6 +24,7 @@ def init():
     screen_width, screen_height = info_object.current_w, info_object.current_h
 
     surface = pygame.display.set_mode((screen_width, screen_height))
+    manager = pygame_gui.UIManager((screen_width, screen_height))
     pygame.display.set_caption("Fishing RPG")
 
     menu_theme = pygame_menu.themes.THEME_DARK.copy()
@@ -22,6 +34,7 @@ def init():
     menu_theme.menu_height = int(screen_height * 0.9)
     pygame.font.init()
     font = pygame.font.Font(None, 24)
+
 
 def get_globals():
     # debug_info = f"""
@@ -35,4 +48,13 @@ def get_globals():
     # """
     #
     # print(debug_info)
-    return clock, screen_width, screen_height, surface, menu_theme, font, global_log
+    return (
+        clock,
+        screen_width,
+        screen_height,
+        surface,
+        menu_theme,
+        font,
+        global_log,
+        manager,
+    )

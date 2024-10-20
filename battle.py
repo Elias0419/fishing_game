@@ -1,6 +1,8 @@
 import random
 import math
 from state_manager import StateManager, WorldState, CharacterState, BattleState
+from util import LoopController, LoopControllerManager, get_level_from_experience
+# from world_map import choose_location
 from locations import World
 import pygame
 import pygame_menu
@@ -46,10 +48,104 @@ def debug_print(*args):
 ################################################################
 ################################################################
 
+# class LoopController:
+#     def __init__(self, controller_id):
+#         self.active = True
+#         self.id = controller_id
+
+# class LoopControllerManager:
+#     _instances = {}
+#
+#     @classmethod
+#     def get_controller(cls, controller_id):
+#         if controller_id not in cls._instances:
+#             cls._instances[controller_id] = LoopController(controller_id)
+#         return cls._instances[controller_id]
+#
+#     @classmethod
+#     def end_specific_loop(cls, controller_id):
+#         if controller_id in cls._instances:
+#             cls._instances[controller_id].active = False
+
+######
+# popup
 def render_and_blit(surface, font, text, pos):
     text_surf = font.render(text, True, (255, 255, 255))
     surface.blit(text_surf, pos)
 
+def create_popup(text, buttons=None):
+
+    width, height = 300, 200
+    x, y = (screen_width - width) // 2, (screen_height - height) // 2
+
+    popup_surface = pygame.Surface((width, height))
+    popup_surface.fill(getattr(menu_theme, 'background_color', (100, 100, 100)))
+
+    text_surface = font.render(text, True, getattr(menu_theme, 'text_color', (255, 255, 255)))
+    text_rect = text_surface.get_rect(center=(width // 2, height // 3))
+
+    button_objects = []
+    if buttons:
+        button_width, button_height = 80, 30
+        spacing = (width - len(buttons) * button_width) // (len(buttons) + 1)
+        for index, (label, callback) in enumerate(buttons):
+            button_x = spacing + index * (button_width + spacing)
+            button_y = height - button_height - 20
+            button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+            button_text = font.render(label, True, getattr(menu_theme, 'button_text_color', (0, 0, 0)))
+            button_objects.append({'rect': button_rect, 'text': button_text, 'callback': callback})
+
+    return {
+        'surface': popup_surface,
+        'text_surface': text_surface,
+        'text_rect': text_rect,
+        'buttons': button_objects,
+        'x': x,
+        'y': y
+    }
+
+should_close_popup = False
+
+def close_popup():
+    global should_close_popup
+    should_close_popup = True
+
+def run_popup(popup):
+    global should_close_popup
+    running = True
+    popup['should_close'] = False
+
+    while running:
+        if should_close_popup:
+            popup['should_close'] = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+                for button in popup['buttons']:
+                    if button['rect'].collidepoint(mouse_pos[0] - popup['x'], mouse_pos[1] - popup['y']):
+                        button['callback']()
+                        if popup['should_close']:
+                            running = False
+
+        surface.blit(popup['surface'], (popup['x'], popup['y']))
+        surface.blit(popup['text_surface'], popup['text_rect'].topleft)
+        for button in popup['buttons']:
+            pygame.draw.rect(surface, getattr(menu_theme, 'button_color', (200, 200, 200)), button['rect'].move(popup['x'], popup['y']))
+            surface.blit(button['text'], button['rect'].move(popup['x'], popup['y']).topleft) # FIXME text missing
+        pygame.display.update()
+        clock.tick(30)
+
+def check_popup_interaction(popup, event):
+
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        x, y = event.pos
+        for button in popup['buttons']:
+            if button['rect'].collidepoint(x, y):
+                button['callback']()
+
+######
 
 class CharacterStatusBox:
     def __init__(self, character):
@@ -241,59 +337,61 @@ def show_popups():
             text_rect = text.get_rect(center=(x, y))
             surface.blit(text, text_rect)
 
-def create_level_map(): # FIXME
-    return {x: 100 * 2 ** (x - 10) for x in range(10, 101)}
 
 
-def get_level_from_experience(experience):
-    level_map = create_level_map()
-    for level in sorted(level_map.keys(), reverse=True):
-        if experience >= level_map[level]:
-            return level
-    return 10
+
+
 
 
 class Battle:
-    def __init__(self, character, fish):
+    def __init__(self, character, fish, location):
         self.drag_too_high_count = 0
         self.drag_too_low_count = 0
         # self.drag_init_flag = False
         self.max_safe_drag = None
         self.first_round = True
+        self.location = location
+        self.fish = fish
+        self.character = character
         self.character_status_box = CharacterStatusBox(character)
         self.fish_status_box = FishStatusBox(fish)
 
-    def battle_fish(self, character, fish, bait, location, difficulty):
+    def battle_fish(self, bait, difficulty):
 
-        while True:
+        # while True:
             if difficulty == None:
-                if self.none_battle(difficulty, character, fish, bait):
-                    break
+                self.none_battle(difficulty, bait)
+                    # break
             elif difficulty == "easy":
-                if self.easy_battle(character, fish, bait,  location,  difficulty):
-                    break
+                self.easy_battle(difficulty,  bait)
+                    # break
             elif difficulty == "medium":
-                if self.medium_battle(difficulty, character, fish, bait):
-                    break
+                self.medium_battle(difficulty, bait)
+                    # break
             elif difficulty == "hard":
-                if self.hard_battle(difficulty, character, fish, bait):
-                    break
+                self.hard_battle(difficulty, bait)
+                    # break
             elif difficulty == "impossible":
-                if self.impossible_battle(difficulty, character, fish, bait):
-                    break
+                self.impossible_battle(difficulty, bait)
+                    # break
 
-    def print_battle_menu(self, character, fish, bait, location, difficulty):
+    def print_battle_menu(self, bait, difficulty):
+
+        fish = self.fish
         pre_battle_fish_stamina = fish.stamina
         menu_theme.widget_alignment = pygame_menu.locals.ALIGN_LEFT
         menu = pygame_menu.Menu("Battle", screen_width, screen_height, theme=menu_theme)
         # menu.add.button('Reel', reel_fish)
-        menu.add.button('Let Fish Take Line', self.let_the_fish_take_line, difficulty, character, fish, bait, pre_battle_fish_stamina)
-        menu.add.button('Adjust Drag', self.adjust_drag, character)
+        menu.add.button('Let Fish Take Line', self.let_the_fish_take_line, difficulty, bait, pre_battle_fish_stamina)
+        menu.add.button('Adjust Drag', self.adjust_drag)
         # menu.add.button('Other Options', other_options)
         # menu.add.button('Cut Your Line', cut_line)
         menu.add.button('Quit', pygame_menu.events.EXIT)
 
-        while True:
+        loop_controller = LoopControllerManager.get_controller("print_battle_menu")
+        loop_controller.active = True
+
+        while loop_controller.active:
             # screen.fill((0, 0, 0))
             events = pygame.event.get()
             for event in events:
@@ -301,7 +399,7 @@ class Battle:
                     exit()
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_a:
-                        self.reel(difficulty, character, fish, bait)
+                        self.reel(difficulty, bait)
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 4:  # Scroll up
                         try:
@@ -362,7 +460,7 @@ class Battle:
             return False
 
     @LogDecorator(log=get_global_log())
-    def adjust_drag(self, character):
+    def adjust_drag(self):
         add_popup("message")
         # reel = character.gear[0]["rod"].reel
         # reel_name = reel.name
@@ -397,8 +495,10 @@ class Battle:
 
     @LogDecorator(log=get_global_log())
     def calculate_drag(
-        self, difficulty, character, fish, bait, adjustment=0, adjustment_direction=None
+        self, difficulty, bait, adjustment=0, adjustment_direction=None
     ):
+        character = self.character
+        fish = self.fish
         reel = character.gear[0]["rod"].reel
         fish_weight = fish.weight_lbs
         line_strength = character.gear[0]["rod"].line.breaking_strength_lbs
@@ -499,9 +599,11 @@ class Battle:
 
     @LogDecorator(log=get_global_log())
     def let_the_fish_take_line(
-        self, difficulty, character, fish, bait, pre_battle_fish_stamina
+        self, difficulty, bait, pre_battle_fish_stamina
     ):
         print("combat log test")
+        character = self.character
+        fish = self.fish
         # print("take line")  # TODO maybe certain fish take line differently or stamina loss affects them differently
         if fish.stamina <= pre_battle_fish_stamina * 0.2:
             print("The fish seems too weak to take any line\n")
@@ -517,8 +619,8 @@ class Battle:
             print(f"The fish used {fish_stamina_loss} stamina.")
             self.take_line_stamina_increase(character)
 
-    def take_line_stamina_increase(self, character, fish_low_stamina=False):
-
+    def take_line_stamina_increase(self, fish_low_stamina=False):
+        character = self.character
         if character.stamina >= character.max_stamina:
             print("You are already at maximum stamina.")
         else:
@@ -537,31 +639,33 @@ class Battle:
                 character.stamina += character_stamina_gain
                 print(f"You gained {character_stamina_gain} stamina.")
 
-    def easy_battle(self, character, fish, bait, location, difficulty):
+    def easy_battle(self, bait, difficulty):
         # self.print_battle_stamina(character, fish)
         print("\ndrag_too_high easy_battle before", self.drag_too_high_count)
         self.drag_too_high_count = 0
         print("drag_too_high easy_battle after", self.drag_too_high_count)
 
-        if self.print_battle_menu(character, fish, bait, location, difficulty):
-            return True
+        self.print_battle_menu(bait, difficulty)
+            # return True
 
-    def medium_battle(self, difficulty, character, fish, bait): # TODO
+    def medium_battle(self, bait, difficulty): # TODO
         self.drag_too_high_count = 0
         print("medium_battle")
         return True
 
-    def hard_battle(self, difficulty, character, fish, bait): # TODO
+    def hard_battle(self, bait, difficulty): # TODO
         self.drag_too_high_count = 0
         print("hard_battle")
         return True
 
-    def impossible_battle(self, difficulty, character, fish, bait): # TODO
+    def impossible_battle(self, bait, difficulty): # TODO
         self.drag_too_high_count = 0
         print("impossible_battle")
         return True
 
-    def none_battle(self, difficulty, character, fish, bait): # TODO
+    def none_battle(self, bait, difficulty): # TODO
+        character = self.character
+        fish = self.fish
         print(
             "\nThis fish feels like a lightweight. \nPress Enter to try to reel it in, or type 'O' for other options, or 'Q' to cut your line and give up.\n"
         )
@@ -574,7 +678,7 @@ class Battle:
                 # print(character.gear[0]["bait"])
                 # print("Try again logic goes here")  # TODO
 
-    def lose_bait(self, difficulty, character, fish, bait):
+    def lose_bait(self, difficulty, bait):
         # TODO more complex bait logic
         # chance = self.random_chance(50)
         # print(chance)
@@ -584,15 +688,15 @@ class Battle:
         else:
             print("\nYou didn't lose your bait this time.\n")
 
-    def reel(self, difficulty, character, fish, bait):
-        self.calculate_drag(difficulty, character, fish, bait)
-        if self.check_win(difficulty, character, fish, bait):
+    def reel(self, difficulty, bait):
+        self.calculate_drag(difficulty, bait)
+        if self.check_win(difficulty, bait):
             return True
         else:
             # self._TESTING_(character)
-            if self.calculate_char_stamina_loss(difficulty, character, fish, bait):
+            if self.calculate_char_stamina_loss(difficulty, bait):
                 return True
-            elif self.calculate_fish_stamina_loss(difficulty, character, fish, bait):
+            elif self.calculate_fish_stamina_loss(difficulty, bait):
                 return True
 
             return False
@@ -600,7 +704,9 @@ class Battle:
     def _TESTING_(self, character):  # TODO REMOVE ME
         character.stamina = 100
 
-    def calculate_char_stamina_loss(self, difficulty, character, fish, bait):
+    def calculate_char_stamina_loss(self, difficulty, bait):
+        character = self.character
+        fish = self.fish
         rounded_fish_weight = math.ceil(fish.weight_lbs)
         experience_gap = fish.minimum_fishing_experience - character.fishing_experience
         char_stamina_loss = rounded_fish_weight + random.randint(
@@ -610,8 +716,10 @@ class Battle:
         print(f"You used {char_stamina_loss} stamina!")
 
     def calculate_fish_stamina_loss(
-        self, difficulty, character, fish, bait, weight="normal"
+        self, difficulty, bait, weight="normal"
     ):
+        character = self.character
+        fish = self.fish
         if weight == "high":
             percent_loss = random.randint(50, 90)
         elif weight == "low":
@@ -626,7 +734,7 @@ class Battle:
 
         if fish.stamina - stamina_loss <= 0:
             fish.stamina = 0
-            self.end_battle(difficulty, character, fish, bait)
+            self.end_battle(difficulty, bait)
             # print(f"The fish has exhausted all its stamina and the battle ends.")
             return True
         else:
@@ -636,26 +744,30 @@ class Battle:
             )  # TODO figure out what to do with fractional stamina
             return False
 
-    def check_win(self, difficulty, character, fish, bait):
+    def check_win(self, difficulty, bait):
+        character = self.character
+        fish = self.fish
         if difficulty == None:
             if self.random_chance(90):  # TEST
-                self.end_battle(difficulty, character, fish, bait)
+                self.end_battle(difficulty, bait)
 
                 return True
             else:
                 # print("doh")  # TODO
                 return False
-        elif difficulty == "easy":
+        elif difficulty == "easy": # More difficulties
             if self.random_chance(1):  # TEST
-                self.end_battle(difficulty, character, fish, bait)
+                self.end_battle(difficulty, bait)
                 return True
             else:
                 return False
 
-    def end_battle(self, difficulty, character, fish, bait):
+    def end_battle(self, difficulty, bait):
         self.drag_init_flag = False
         self.drag_too_high_count = 0
         self.drag_too_low_count = 0
+        character = self.character
+        fish = self.fish
         exp = fish.gives_exp
         # character.fishing_experience += exp # TODO testing
         print("exp increase disabled for testing")
@@ -664,58 +776,49 @@ class Battle:
         if new_age != old_age:
             print("age increased")
         state_manager = StateManager()
+        world = World.get_instance(character)
         state_manager.save_state(
-            f"{character.character_id}.pkl", character, self, WorldState()
+            f"{character.character_id}.pkl", character, self, world
         )  # dummy world state
-        self.print_battle_summary(difficulty, character, fish, bait, exp)
+        self.print_battle_summary(difficulty, bait, exp)
 
-    def print_battle_summary(self, difficulty, character, fish, bait, exp):
-        window_width = int(screen_width * 0.3)
-        window_height = int(screen_height * 0.3)
-        battle_summary_surface = pygame.Surface((window_width, window_height))
+    def print_battle_summary(self, difficulty, bait, exp):
 
-        text_color = pygame.Color('black')
-        background_color = pygame.Color('white')
 
-        messages = [
+        buttons = [
+            ("Cast again", lambda: self.cast_again()),
+            ("Back to World Map", lambda: self.back_to_world_map())
+            ]
+
+
+
+        messages = """
             f"You caught a {fish.name}!",
             f"Difficulty: {difficulty}",
             f"Length: {fish.length_inch:.2f} inches",
             f"Weight: {fish.weight_lbs:.2f} pounds",
             f"You gained {exp} fishing experience!"
-        ]
+        """
 
-        battle_summary_surface.fill(background_color)
-
-        y = 10
-        for message in messages:
-            text_surface = font.render(message, True, text_color)
-            battle_summary_surface.blit(text_surface, (10, y))
-            y += text_surface.get_height() + 5  # Increment y offset
-
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-
-        # TODO figure out why the button doesn't show
-        ok_button = pygame.Rect(x + window_width - 90, y + window_height - 40, 80, 30)
-        pygame.draw.rect(battle_summary_surface, pygame.Color('lightskyblue'), ok_button)
-        ok_text = font.render("OK", True, text_color)
-        battle_summary_surface.blit(ok_text, ok_button)
-
-        surface.blit(battle_summary_surface, (x, y))
-        pygame.display.update()
-
-        summary_open = True
-        while summary_open:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if ok_button.collidepoint(event.pos):
-                        summary_open = False  # Close the summary
+        popup = create_popup(messages, buttons)
+        run_popup(popup)
 
 
+    def back_to_world_map(self):
+        from world_map import choose_location
+        print("click")
+        loop_controller = LoopControllerManager.get_controller("print_battle_menu")
+        loop_controller.active = False
+        print(LoopControllerManager.print_all_loop_instances()) # DEBUG
+        choose_location(self.character)
+
+    def cast_again(self):
+        character = self.character
+        location = self.location
+        fish = location.get_fish()
+        bait = character.gear[0]["bait"]
+        cast = Cast(character, fish, bait, location)
+        cast.cast_line()
 
     def random_chance(self, percent):
         return random.random() < percent / 100
@@ -757,11 +860,11 @@ class Cast:
         else:
             if self.fish.eats == ["all"]:
 
-                battle = Battle(self.character, self.fish)
-                battle.battle_fish(self.character, self.fish, self.bait, self.location)
+                battle = Battle(self.character, self.fish, self.location)
+                battle.battle_fish(self.bait)
             elif self.bait.name in self.fish.eats:
-                battle = Battle(self.character, self.fish)
-                battle.battle_fish(self.character, self.fish, self.bait) # TODO
+                battle = Battle(self.character, self.fish, self.location)
+                battle.battle_fish(self.bait) # TODO
             else:
                 self.wrong_bait_message()
 
@@ -805,7 +908,9 @@ class Cast:
         menu.add.button('Continue', self.continue_game, difficulty)
         menu.add.button('Cut the line', pygame_menu.events.BACK)
 
-        while True:
+        loop_controller = LoopControllerManager.get_controller("continue_or_quit")
+        loop_controller.active = True
+        while loop_controller.active:
             events = pygame.event.get()
             for event in events:
                 if event.type == pygame.QUIT:
@@ -831,8 +936,10 @@ class Cast:
             # Combat Log: {combat_log}
             # Difficulty: {difficulty}
             # """)
-        battle = Battle(self.character, self.fish)
-        battle.battle_fish(self.character, self.fish, self.bait,  self.location, difficulty)
+        loop_controller = LoopControllerManager.get_controller("continue_or_quit")
+        loop_controller.active = False
+        battle = Battle(self.character, self.fish, self.location)
+        battle.battle_fish(self.bait, difficulty)
 
         # choice = input(
         #     "\nPress Enter to fight the fish, or type 'Q' and press Enter to cut the line and give up.\n"

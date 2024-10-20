@@ -13,18 +13,13 @@ init()
 from character import Character
 from locations import World
 from util import (
-    display_equipment,
-    display_stats,
-    choose_location,
     generate_default_character_data,
 )
+from world_map import choose_location
 from state_manager import StateManager, BattleState
 state_manager = StateManager()
 
 clock, screen_width, screen_height, surface, menu_theme, font, global_log = get_globals()
-
-
-
 
 
 
@@ -33,8 +28,8 @@ def game_interface(character):
     menu = pygame_menu.Menu("Game Menu", screen_width, screen_height, theme=menu_theme)
 
     menu.add.label(f"Welcome {character.name}!", max_char=-1, font_size=30)
-    menu.add.button("Show Stats", display_stats, character)
-    menu.add.button("Show Equipment", display_equipment, character)
+    # menu.add.button("Show Stats", display_stats, character)
+    # menu.add.button("Show Equipment", display_equipment, character)
     menu.add.button(
         "Go Fishing",
         choose_location, character

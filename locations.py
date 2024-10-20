@@ -22,6 +22,7 @@ class Location:
     fish_probability: dict[str, float] = field(default_factory=lambda: {"any": 1})
     unlocked: bool = False
     coordinates: list[tuple[int, int]] = field(default_factory=list)
+    recently_entered: bool = False
 
     def occupies(self, x, y):
         return (x, y) in self.coordinates

@@ -1,6 +1,6 @@
 from boat import Boat
 from garage import Garage
-from battle import get_level_from_experience
+from util import get_level_from_experience
 from dataclasses import dataclass, field
 import pygame
 

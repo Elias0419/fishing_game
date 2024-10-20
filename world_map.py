@@ -1,14 +1,127 @@
 import pygame
 import pygame_menu
-
+from util import LoopController, LoopControllerManager, create_popup, run_popup, load_image
 from conf import get_globals
+from locations import Location, World, StreamInTheWoods
+from character import Character, Player
 
+from battle import Cast
 from state_manager import StateManager
+
 state_manager = StateManager()
 
 clock, screen_width, screen_height, surface, menu_theme, font, global_log = get_globals()
 
 CELL_SIZE = 100
+def available_locations(character):
+    player_level = character.age
+    world = World.get_instance(character)
+    _, _, world_state = StateManager.load_state(f"{character.character_id}.pkl")
+    if world_state.locations != []:
+        StateManager.apply_state(world_state, world)
+    return [
+        loc
+        for loc in world.locations
+        if player_level >= loc.minimum_level and loc.unlocked
+    ]
+
+flag = False # DEBUG REMOVE ME
+flag2 = False # DEBUG REMOVE ME
+def check_location(player, locations, character):
+    global flag, flag2
+    player_pos = player.position
+    for location in locations:
+        # print(location.recently_entered)
+        if location.occupies(player_pos[0], player_pos[1]) and not location.recently_entered:
+            location.recently_entered = True
+            do_you_want_to_enter_location(character, location)
+
+            if not flag: # DEBUG REMOVE ME
+                print("entered", location.name)
+                flag = True
+                flag2 = False
+            # print(f"Entered location: {location.name}")
+            break
+        elif not location.occupies(player_pos[0], player_pos[1]) and location.recently_entered:
+            location.recently_entered = False
+
+            if not flag2: # DEBUG REMOVE ME
+                print("exited", location.name)
+                flag2 = True
+                flag = False
+
+def do_you_want_to_enter_location(character, location):
+    location_text = f"{location.name} test"
+    # popup_width, popup_height = int(screen_width / 3), int(screen_height / 3)
+    buttons = [
+    ("Enter", lambda: go_fishing(character, location)),
+    ("Decline", lambda: decline_location(character, location))
+    ]
+    popup = create_popup(location_text, buttons)
+    run_popup(popup)
+    # # print(popup_width, popup_height)
+    # popup_surface = pygame.Surface(popup_width, popup_height)
+    # while True:
+    #     events = pygame.event.get()
+    #     for event in events:
+    #         if event.type == pygame.QUIT:
+    #             pygame.quit()
+    #             exit()
+    #     popup_surface.blit(location_text)
+    #     surface.blit(popup_surface)
+
+    # go_fishing(character, location)
+
+def decline_location(character, location):
+    print("decline") # TODO
+
+def choose_location(character):
+    grid = Grid(CELL_SIZE, 100)  # 100x100 grid, total size 10,000x10,000
+    player = Player(character, grid, (50, 50))
+    viewport = Viewport(screen_width, screen_height)
+    map_image = load_image('images/grid_map.png', grid.width, grid.height)
+    all_sprites = pygame.sprite.Group(player)
+    world = World.get_instance(character)
+    locations = world.locations
+    loop_controller = LoopControllerManager.get_controller("choose_location")
+    loop_controller.active = True
+    while loop_controller.active:
+        events = pygame.event.get()
+        for event in events:
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+        keys_pressed = pygame.key.get_pressed()
+        player.update(keys_pressed)
+        viewport.center_on(player, grid)
+
+        surface.blit(map_image, (0, 0), viewport.rect)
+
+        for sprite in all_sprites:
+            new_topleft = (sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[0] - viewport.rect.left,
+                           sprite.grid.to_pixel(sprite.position[0], sprite.position[1])[1] - viewport.rect.top)
+            if sprite.rect.topleft != new_topleft:
+                # print(f"Player moved to {new_topleft} on screen.")
+                sprite.rect.topleft = new_topleft
+            surface.blit(sprite.image, sprite.rect)
+
+        pygame.display.flip()
+        clock.tick(20)
+        check_location(player, locations, character)  # Check for location changes
+
+        pygame.display.update()
+
+def go_fishing(character, location):
+    location.recently_entered = True
+
+    # location = choose_location(character, surface, menu_theme)
+    fish = location.get_fish()
+    bait = character.gear[0]["bait"]
+    cast = Cast(character, fish, bait, location)
+    loop_controller = LoopControllerManager.get_controller("choose_location")
+    loop_controller.active = False
+    cast.cast_line()
 
 
 
